@@ -6,37 +6,15 @@ import time
 import os
 import json
 import contextlib
-import math
-import operator
 
 from selenium import webdriver
 import Image, ImageChops
 import plac
 
-def rmsdiff_2011(im1, im2, diff):
-    "Calculate the root-mean-square difference between two images"
-    h = diff.histogram()
-    sq = (value*(idx**2) for idx, value in enumerate(h))
-    sum_of_squares = sum(sq)
-    rms = math.sqrt(sum_of_squares/float(im1.size[0] * im1.size[1]))
-    return rms
-
-def images_identical(path1, path2, rms):
+def images_identical(path1, path2):
     im1 = Image.open(path1)
     im2 = Image.open(path2)
-    #return ImageChops.difference(im1, im2).getbbox() is not None
-    diff = ImageChops.difference(im1, im2)
-
-    if diff.getbbox() is None:
-        return True
-    else:
-        return False
-        return rmsdiff_2011(im1, im2, diff) < rms
-
-def get_rms(path1, path2):
-    im1 = Image.open(path1)
-    im2 = Image.open(path2)
-    return rmsdiff_2011(im1, im2, ImageChops.difference(im1, im2))
+    return ImageChops.difference(im1, im2).getbbox() is None    
 
 def do_record(driver, url, dest):
     # TODO: only clicks for now.
@@ -55,12 +33,12 @@ window._getJonxEvents = function() { return [start, events]; };
 ''')
     screenshots = []
     while True:
-        i = raw_input('press enter to take a screenshot, anything else to exit ')
-        if len(i) > 0:
+        if len(raw_input("Press enter to take a screenshot, or type Q+enter if you're done\n")) > 0:
             break
         # take a screen shot
         driver.save_screenshot(os.path.join(dest, 'screenshot' + str(len(screenshots)) + '.png'))
         screenshots.append(driver.execute_script('return Date.now();'))
+        print len(screenshots), 'screenshots taken'
     
     start,events = driver.execute_script('return window._getJonxEvents();')
     log = []
@@ -90,11 +68,18 @@ window._getJonxEvents = function() { return [start, events]; };
                 log.append(['event', event[0] - last_time, 'click', event[1]])
                 ei += 1
                 last_time = event[0]
-    json.dump({'url': url, 'thresh': 0, 'log': log}, open(os.path.join(dest, 'record.json'), 'w'))
+    json.dump({'url': url, 'log': log}, open(os.path.join(dest, 'record.json'), 'w'))
+
+    # Sadly WebDriver doesn't *actually* click links, so :active states don't work. There are two options:
+    # 1. Remove RMS error and possibly mask differences
+    # 2. Just re-record and make sure they review the screenshots.
+    # We went with #2
     
-    # after we record we must immediately re-record to figure out what the rms image threshold is (since screenshots sometimes
-    # look slightly different)
-    print 'Re-recording to calculate threshold'
+    driver.get('about:blank')
+    raw_input("Because of how WebDriver handles :hover and :active, we need to re-record the test to take new screen shots. Please pay attention and ensure it looks good as the test runs, or review the screen shots at the end. Press enter to continue.")
+    do_playback(driver, dest, True)
+    print "Be sure to review the screen shots if you weren\'t watching, as they may not be exactly the same."
+    print "Finally we'll rerun the test to make sure it works."
     do_playback(driver, dest)
     
 
@@ -102,7 +87,6 @@ def do_playback(d, src, rerecord=False):
     record = json.load(open(os.path.join(src, 'record.json')))
     url = record['url']
     log = record['log']
-    thresh = original_thresh = record['thresh']
 
     d.get(url)
 
@@ -111,36 +95,27 @@ def do_playback(d, src, rerecord=False):
     for item in log:
         type = item[0]
         ts = item[1]
-        print 'Sleeping for', ts, 'ms'
+        print '  Sleeping for', ts, 'ms'
         time.sleep(float(ts) / 1000)
         last_ts = ts
         if type == 'event':
-            print 'Clicking', item[3]
+            print '  Clicking', item[3]
             d.find_element_by_id(item[3]).click()
         else:
-            print 'Taking a screen shot'
+            print '  Taking a screen shot'
             # screen shot
             original_path = os.path.join(src, 'screenshot' + str(screenshots) + '.png')
             last_path = os.path.join(src, 'last.png')
             if rerecord:
-                d.save_screenshot(last_path)
-                # figure out a new threshold
-                thresh = max(thresh, get_rms(original_path, last_path))
-                # move last to current
-                os.rename(last_path, original_path)
+                d.save_screenshot(original_path)
             else:
                 d.save_screenshot(last_path)
                 # compare
-                if not images_identical(original_path, last_path, thresh):
+                if not images_identical(original_path, last_path):
                     raise ValueError('Screenshot %d was different, compare it and last.png' % screenshots)
             screenshots += 1
 
-    # rewrite the json since the threshold may have changed.
     if rerecord:
-        if thresh != original_thresh:
-            print 'Threshold adjusted from', original_thresh, 'to', thresh
-        record['thresh'] = thresh
-        json.dump(record, open(os.path.join(src, 'record.json'), 'w'))
         print 'Test recorded successfully'
     else:
         print 'Test passed successfully'
@@ -148,7 +123,6 @@ def do_playback(d, src, rerecord=False):
 DRIVERS = {
     'firefox': webdriver.Firefox,
     'chrome': webdriver.Chrome,
-    'phantomjs': webdriver.PhantomJS,
     'ie': webdriver.Ie,
     'opera': webdriver.Opera
 }    
