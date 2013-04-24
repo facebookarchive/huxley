@@ -1,5 +1,5 @@
 # TODO: test with phantomjs
-# TODO: support key events
+# TODO: support keyboard events
 # TODO: support multiple pages
 
 import time
@@ -101,7 +101,7 @@ window._getJonxEvents = function() { return [start, events]; };
                 log.append(['event', event[0] - last_time, 'click', event[1]])
                 ei += 1
                 last_time = event[0]
-    json.dump({'url': url, 'log': log}, open(os.path.join(dest, 'record.json'), 'w'))
+    json.dump({'url': url, 'log': log, 'size': driver.get_window_size()}, open(os.path.join(dest, 'record.json'), 'w'))
 
     # Sadly WebDriver doesn't *actually* click links, so :active states don't work. There are two options:
     # 1. Remove RMS error and possibly mask differences
@@ -120,6 +120,9 @@ def do_playback(d, src, rerecord, diffcolor):
     record = json.load(open(os.path.join(src, 'record.json')))
     url = record['url']
     log = record['log']
+    size = record['size']
+
+    d.set_window_size(size['width'], size['height'])
 
     d.get(url)
 
@@ -167,11 +170,14 @@ DRIVERS = {
     record=plac.Annotation('URL to open for test recording', 'option', 'r', str, metavar='URL'),
     rerecord=plac.Annotation('Re-run the test but take new screenshots', 'flag', 'R'),
     browser=plac.Annotation('Browser to use, either firefox, chrome, phantomjs, ie or opera.', 'option', 'b', str, metavar='NAME'),
-    diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB')
+    diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
+    screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
 )
-def main(filename, record='', rerecord=False, browser='firefox', diffcolor='0,255,0'):
+def main(filename, record='', rerecord=False, browser='firefox', diffcolor='0,255,0', screensize='1024x768'):
     try:
         d = DRIVERS[browser]()
+        width,height = tuple(int(x) for x in screensize.split('x'))
+        d.set_window_size(width, height)
     except KeyError:
         raise ValueError(
             'Invalid browser %r; valid browsers are %r.' % (browser, DRIVERS.keys())
