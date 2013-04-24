@@ -16,6 +16,39 @@ def images_identical(path1, path2):
     im2 = Image.open(path2)
     return ImageChops.difference(im1, im2).getbbox() is None    
 
+def image_diff(path1, path2, outpath, diffcolor):
+    im1 = Image.open(path1)
+    im2 = Image.open(path2)
+    pix1 = im1.load()
+    pix2 = im2.load()
+    
+    if im1.mode != im2.mode:
+        raise ValueError('Different pixel modes between %r and %r' % (path1, path2))
+    if im1.size != im2.size:
+        raise ValueError('Different dimensions between %r and %r' % (path1, path2))
+
+    mode = im1.mode
+    width,height = im1.size
+
+    for y in xrange(height):
+        for x in xrange(width):
+            if pix1[x,y] != pix2[x,y]:
+                changed = True
+                if mode == '1':
+                    value = 255
+                elif mode == 'L':
+                    value = 255
+                elif mode == 'RGB':
+                    value = diffcolor
+                elif mode == 'RGBA':
+                    value = diffcolor + (255,)
+                elif mode == 'P':
+                    raise NotImplementedError('TODO: look up nearest pallette color')
+                else:
+                    raise NotImplementedError('Unexpected PNG mode')
+                pix2[x, y] = value
+    im2.save(outpath)
+
 def do_record(driver, url, dest):
     # TODO: only clicks for now.
     try:
@@ -77,13 +110,13 @@ window._getJonxEvents = function() { return [start, events]; };
     
     driver.get('about:blank')
     raw_input("Because of how WebDriver handles :hover and :active, we need to re-record the test to take new screen shots. Please pay attention and ensure it looks good as the test runs, or review the screen shots at the end. Press enter to continue.")
-    do_playback(driver, dest, True)
+    do_playback(driver, dest, True, (0, 255, 0))
     print "Be sure to review the screen shots if you weren\'t watching, as they may not be exactly the same."
     print "Finally we'll rerun the test to make sure it works."
-    do_playback(driver, dest)
+    do_playback(driver, dest, False, (0, 255, 0))
     
 
-def do_playback(d, src, rerecord=False):
+def do_playback(d, src, rerecord, diffcolor):
     record = json.load(open(os.path.join(src, 'record.json')))
     url = record['url']
     log = record['log']
@@ -106,13 +139,15 @@ def do_playback(d, src, rerecord=False):
             # screen shot
             original_path = os.path.join(src, 'screenshot' + str(screenshots) + '.png')
             last_path = os.path.join(src, 'last.png')
+            diff_path = os.path.join(src, 'diff.png');
             if rerecord:
                 d.save_screenshot(original_path)
             else:
                 d.save_screenshot(last_path)
                 # compare
                 if not images_identical(original_path, last_path):
-                    raise ValueError('Screenshot %d was different, compare it and last.png' % screenshots)
+                    image_diff(original_path, last_path, diff_path, diffcolor)
+                    raise ValueError('Screenshot %d was different, compare it and last.png. See diff.png for the diff.' % screenshots)
             screenshots += 1
 
     if rerecord:
@@ -132,8 +167,9 @@ DRIVERS = {
     record=plac.Annotation('URL to open for test recording', 'option', 'r', str, metavar='URL'),
     rerecord=plac.Annotation('Re-run the test but take new screenshots', 'flag', 'R'),
     browser=plac.Annotation('Browser to use, either firefox, chrome, phantomjs, ie or opera.', 'option', 'b', str, metavar='NAME'),
+    diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB')
 )
-def main(filename, record='', rerecord=False, browser='firefox'):
+def main(filename, record='', rerecord=False, browser='firefox', diffcolor='0,255,0'):
     try:
         d = DRIVERS[browser]()
     except KeyError:
@@ -144,7 +180,8 @@ def main(filename, record='', rerecord=False, browser='firefox'):
         if len(record) > 0:
             do_record(d, record, filename)
         else:
-            do_playback(d, filename, rerecord)
+            diffcolor = tuple(int(x) for x in diffcolor.split(','))
+            do_playback(d, filename, rerecord, diffcolor)
 
 if __name__ == '__main__':
     plac.call(main)
