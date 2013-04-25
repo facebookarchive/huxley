@@ -1,14 +1,13 @@
-# TODO: test with phantomjs
-# TODO: support keyboard events
-# TODO: support multiple pages
+# TODO: keypress and scroll events
 
-import time
-import os
-import json
 import contextlib
-
+import operator
+import os
+import time
+import jsonpickle
 from selenium import webdriver
-import Image, ImageChops
+import Image
+import ImageChops
 import plac
 
 def images_identical(path1, path2):
@@ -49,114 +48,139 @@ def image_diff(path1, path2, outpath, diffcolor):
                 pix2[x, y] = value
     im2.save(outpath)
 
-def do_record(driver, url, dest):
-    # TODO: only clicks for now.
-    try:
-        os.makedirs(dest)
-    except:
-        pass
-    driver.get(url)
-    driver.execute_script('''
+class TestError(RuntimeError):
+    pass
+
+class TestStep(object):
+    def __init__(self, offset_time):
+        self.offset_time = offset_time
+
+    def execute(self, run):
+        raise NotImplementedError
+
+class ClickTestStep(TestStep):
+    CLICK_ID = '_jonxClick'
+    def __init__(self, offset_time, pos):
+        super(ClickTestStep, self).__init__(offset_time)
+        self.pos = pos
+
+    def execute(self, run):
+        print '  Clicking', self.pos
+        # Work around a bug in ActionChains.move_by_offset()
+        id = run.d.execute_script('return document.elementFromPoint(%d, %d).id;' % tuple(self.pos))
+        if id is None:
+            run.d.execute_script('document.elementFromPoint(%d, %d).id = %r;' % (self.pos[0], self.pos[1], self.CLICK_ID))
+            id = self.CLICK_ID
+        run.d.find_element_by_id(id).click()
+
+class ScreenshotTestStep(TestStep):
+    def __init__(self, offset_time, run, index):
+        super(ScreenshotTestStep, self).__init__(offset_time)
+        self.index = index
+        
+    def get_path(self, test):
+        return os.path.join(test.path, 'screenshot' + str(self.index) + '.png')
+
+    def execute(self, run):
+        print '  Taking screenshot', self.index
+        original = self.get_path(run.test)
+        new = os.path.join(run.test.path, 'last.png')
+        if run.mode == TestRunModes.RERECORD:
+            run.d.save_screenshot(original)
+        else:
+            run.d.save_screenshot(new)
+            if not images_identical(original, new):
+                image_diff(original, new, os.path.join(run.test.path, 'diff.png'), run.diffcolor)
+                raise TestError('Screenshot %r was different; compare it with last.png. See diff.png for the comparison.' % self.index)
+
+class Test(object):
+    def __init__(self, url, screen_size, start_time, path):
+        self.steps = []
+        self.url = url
+        self.screen_size = screen_size
+        self.last_timestamp = start_time
+        self.path = path
+
+class TestRunModes(object):
+    RECORD = 1
+    RERECORD = 2
+    PLAYBACK = 3
+
+class TestRun(object):
+    def __init__(self, test, d, mode, diffcolor):
+        self.test = test
+        self.d = d
+        self.mode = mode
+        self.diffcolor = diffcolor
+
+    @classmethod
+    def rerecord(cls, test, d, diffcolor):
+        print 'Begin rerecord'
+        run = TestRun(test, d, TestRunModes.RERECORD, diffcolor)
+        run._playback()
+
+    @classmethod
+    def playback(cls, test, d, diffcolor):
+        print 'Begin playback'
+        run = TestRun(test, d, TestRunModes.PLAYBACK, diffcolor)
+        run._playback()
+
+    def _playback(self):
+        self.d.set_window_size(*self.test.screen_size)
+        self.d.get('about:blank')
+        self.d.refresh()
+        self.d.get(self.test.url)
+        last_offset_time = 0
+        for step in self.test.steps:
+            sleep_time = step.offset_time - last_offset_time
+            print '  Sleeping for', sleep_time, 'ms'
+            time.sleep(float(sleep_time) / 1000)
+            step.execute(self)
+            last_offset_time = step.offset_time
+
+    @classmethod
+    def record(cls, d, url, screen_size, path, diffcolor):
+        print 'Begin record'
+        try:
+            os.makedirs(path)
+        except:
+            pass
+        start_time = d.execute_script('return Date.now();')
+        test = Test(url, screen_size, start_time, path)
+        run = TestRun(test, d, TestRunModes.RECORD, diffcolor)
+        d.set_window_size(*screen_size)
+        d.get('about:blank')
+        d.refresh()
+        d.get(test.url)
+        d.execute_script('''
 (function() {
-var start = Date.now();
 var events = [];
-window.addEventListener('click', function (e) { events.push([Date.now(), e.target.id]); }, true);
-window._getJonxEvents = function() { return [start, events]; };
+window.addEventListener('click', function (e) { events.push([Date.now(), [e.clientX, e.clientY]]); }, true);
+window._getJonxEvents = function() { return events; };
 })();
 ''')
-    screenshots = []
-    while True:
-        if len(raw_input("Press enter to take a screenshot, or type Q+enter if you're done\n")) > 0:
-            break
-        # take a screen shot
-        driver.save_screenshot(os.path.join(dest, 'screenshot' + str(len(screenshots)) + '.png'))
-        screenshots.append(driver.execute_script('return Date.now();'))
-        print len(screenshots), 'screenshots taken'
-    
-    start,events = driver.execute_script('return window._getJonxEvents();')
-    log = []
+        steps = []
+        while True:
+            if len(raw_input("Press enter to take a screenshot, or type Q+enter if you're done\n")) > 0:
+                break
+            screenshot_step = ScreenshotTestStep(d.execute_script('return Date.now();') - start_time, run, len(steps))
+            run.d.save_screenshot(screenshot_step.get_path(run.test))
+            steps.append(screenshot_step)
+            print len(steps), 'screenshots taken'
 
-    ssi = ei = 0
-    last_time = start
+        # now capture the clicks
+        events = d.execute_script('return window._getJonxEvents();')
+        for (timestamp, id) in events:
+            steps.append(ClickTestStep(timestamp - start_time, id))
+            
+        steps.sort(key=operator.attrgetter('offset_time'))
 
-    while len(log) < len(screenshots) + len(events):
-        if ssi >= len(screenshots):
-            event = events[ei]
-            log.append(['event', event[0] - last_time, 'click', event[1]])
-            ei += 1
-            last_time = event[0]
-        elif ei >= len(events):
-            screenshot = screenshots[ssi]
-            log.append(['screenshot', screenshot - last_time])
-            ssi += 1
-            last_time = screenshot
-        else:
-            screenshot = screenshots[ssi]
-            event = events[ei]
-            if screenshot < event[0]:
-                log.append(['screenshot', screenshot - last_time])
-                ssi += 1
-                last_time = screenshot
-            else:
-                log.append(['event', event[0] - last_time, 'click', event[1]])
-                ei += 1
-                last_time = event[0]
-    json.dump({'url': url, 'log': log, 'size': driver.get_window_size()}, open(os.path.join(dest, 'record.json'), 'w'))
+        test.steps = steps
 
-    # Sadly WebDriver doesn't *actually* click links, so :active states don't work. There are two options:
-    # 1. Remove RMS error and possibly mask differences
-    # 2. Just re-record and make sure they review the screenshots.
-    # We went with #2
-    
-    driver.get('about:blank')
-    raw_input("Because of how WebDriver handles :hover and :active, we need to re-record the test to take new screen shots. Please pay attention and ensure it looks good as the test runs, or review the screen shots at the end. Press enter to continue.")
-    do_playback(driver, dest, True, (0, 255, 0))
-    print "Be sure to review the screen shots if you weren\'t watching, as they may not be exactly the same."
-    print "Finally we'll rerun the test to make sure it works."
-    do_playback(driver, dest, False, (0, 255, 0))
-    
+        cls.rerecord(test, d, diffcolor)
+        cls.playback(test, d, diffcolor)
 
-def do_playback(d, src, rerecord, diffcolor):
-    record = json.load(open(os.path.join(src, 'record.json')))
-    url = record['url']
-    log = record['log']
-    size = record['size']
-
-    d.set_window_size(size['width'], size['height'])
-
-    d.get(url)
-
-    screenshots = 0
-
-    for item in log:
-        type = item[0]
-        ts = item[1]
-        print '  Sleeping for', ts, 'ms'
-        time.sleep(float(ts) / 1000)
-        last_ts = ts
-        if type == 'event':
-            print '  Clicking', item[3]
-            d.find_element_by_id(item[3]).click()
-        else:
-            print '  Taking a screen shot'
-            # screen shot
-            original_path = os.path.join(src, 'screenshot' + str(screenshots) + '.png')
-            last_path = os.path.join(src, 'last.png')
-            diff_path = os.path.join(src, 'diff.png');
-            if rerecord:
-                d.save_screenshot(original_path)
-            else:
-                d.save_screenshot(last_path)
-                # compare
-                if not images_identical(original_path, last_path):
-                    image_diff(original_path, last_path, diff_path, diffcolor)
-                    raise ValueError('Screenshot %d was different, compare it and last.png. See diff.png for the diff.' % screenshots)
-            screenshots += 1
-
-    if rerecord:
-        print 'Test recorded successfully'
-    else:
-        print 'Test passed successfully'
+        return test
 
 DRIVERS = {
     'firefox': webdriver.Firefox,
@@ -176,18 +200,32 @@ DRIVERS = {
 def main(filename, record='', rerecord=False, browser='firefox', diffcolor='0,255,0', screensize='1024x768'):
     try:
         d = DRIVERS[browser]()
-        width,height = tuple(int(x) for x in screensize.split('x'))
-        d.set_window_size(width, height)
+        screensize = tuple(int(x) for x in screensize.split('x'))
     except KeyError:
         raise ValueError(
             'Invalid browser %r; valid browsers are %r.' % (browser, DRIVERS.keys())
         )
+    try:
+        os.makedirs(filename)
+    except:
+        pass
+
+    diffcolor = tuple(int(x) for x in diffcolor.split(','))
+    jsonfile = os.path.join(filename, 'record.json')
+
     with contextlib.closing(d):
         if len(record) > 0:
-            do_record(d, record, filename)
+            with open(jsonfile, 'w') as f:
+                f.write(jsonpickle.encode(TestRun.record(d, record, screensize, filename, diffcolor)))
+                print 'Test recorded successfully'
+        elif rerecord:
+            with open(jsonfile, 'r') as f:
+                TestRun.rerecord(jsonpickle.decode(f.read()), d, diffcolor)
+                print 'Test rerecorded successfully'
         else:
-            diffcolor = tuple(int(x) for x in diffcolor.split(','))
-            do_playback(d, filename, rerecord, diffcolor)
+            with open(jsonfile, 'r') as f:
+                TestRun.playback(jsonpickle.decode(f.read()), d, diffcolor)
+                print 'Test played back successfully'
 
 if __name__ == '__main__':
     plac.call(main)
