@@ -115,29 +115,29 @@ class TestRun(object):
         self.diffcolor = diffcolor
 
     @classmethod
-    def rerecord(cls, test, url, d, diffcolor):
+    def rerecord(cls, test, url, d, sleepfactor, diffcolor):
         print 'Begin rerecord'
         run = TestRun(test, url, d, TestRunModes.RERECORD, diffcolor)
-        run._playback()
+        run._playback(sleepfactor)
         print
         print 'Playing back to ensure the test is correct'
         print
-        cls.playback(test, url, d, diffcolor)
+        cls.playback(test, url, d, sleepfactor, diffcolor)
 
     @classmethod
-    def playback(cls, test, url, d, diffcolor):
+    def playback(cls, test, url, d, sleepfactor, diffcolor):
         print 'Begin playback'
         run = TestRun(test, url, d, TestRunModes.PLAYBACK, diffcolor)
-        run._playback()
+        run._playback(sleepfactor)
 
-    def _playback(self):
+    def _playback(self, sleepfactor):
         self.d.set_window_size(*self.test.screen_size)
         self.d.get('about:blank')
         self.d.refresh()
         self.d.get(self.url)
         last_offset_time = 0
         for step in self.test.steps:
-            sleep_time = step.offset_time - last_offset_time
+            sleep_time = (step.offset_time - last_offset_time) * sleepfactor
             print '  Sleeping for', sleep_time, 'ms'
             time.sleep(float(sleep_time) / 1000)
             step.execute(self)
@@ -209,12 +209,13 @@ CAPABILITIES = {
     filename=plac.Annotation('Test file location'),
     record=plac.Annotation('Record a test', 'flag', 'r', metavar='URL'),
     rerecord=plac.Annotation('Re-run the test but take new screenshots', 'flag', 'R'),
+    sleepfactor=plac.Annotation('Sleep interval multiplier', 'option', 'f', float, metavar='FLOAT'),
     browser=plac.Annotation('Browser to use, either firefox, chrome, phantomjs, ie or opera.', 'option', 'b', str, metavar='NAME'),
     remote=plac.Annotation('Remote WebDriver to use', 'option', 'w', metavar='URL'),
     diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
     screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
 )
-def main(url, filename, record=False, rerecord=False, browser='firefox', remote=None, diffcolor='0,255,0', screensize='1024x768'):
+def main(url, filename, record=False, rerecord=False, sleepfactor=1.0, browser='firefox', remote=None, diffcolor='0,255,0', screensize='1024x768'):
     try:
         d = DRIVERS[browser]()
         screensize = tuple(int(x) for x in screensize.split('x'))
@@ -240,11 +241,11 @@ def main(url, filename, record=False, rerecord=False, browser='firefox', remote=
                 print 'Test recorded successfully'
         elif rerecord:
             with open(jsonfile, 'r') as f:
-                TestRun.rerecord(jsonpickle.decode(f.read()), url, d, diffcolor)
+                TestRun.rerecord(jsonpickle.decode(f.read()), url, d, sleepfactor, diffcolor)
                 print 'Test rerecorded successfully'
         else:
             with open(jsonfile, 'r') as f:
-                TestRun.playback(jsonpickle.decode(f.read()), url, d, diffcolor)
+                TestRun.playback(jsonpickle.decode(f.read()), url, d, sleepfactor, diffcolor)
                 print 'Test played back successfully'
 
 if __name__ == '__main__':
