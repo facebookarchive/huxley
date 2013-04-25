@@ -1,6 +1,7 @@
 # TODO: keypress and scroll events
 
 import contextlib
+import math
 import operator
 import os
 import time
@@ -10,6 +11,15 @@ import Image
 import ImageChops
 import plac
 
+def rmsdiff_2011(im1, im2):
+    "Calculate the root-mean-square difference between two images"
+    diff = ImageChops.difference(im1, im2)
+    h = diff.histogram()
+    sq = (value*(idx**2) for idx, value in enumerate(h))
+    sum_of_squares = sum(sq)
+    rms = math.sqrt(sum_of_squares/float(im1.size[0] * im1.size[1]))
+    return rms
+
 def images_identical(path1, path2):
     im1 = Image.open(path1)
     im2 = Image.open(path2)
@@ -18,6 +28,9 @@ def images_identical(path1, path2):
 def image_diff(path1, path2, outpath, diffcolor):
     im1 = Image.open(path1)
     im2 = Image.open(path2)
+
+    rmsdiff = rmsdiff_2011(im1, im2)
+
     pix1 = im1.load()
     pix2 = im2.load()
     
@@ -48,6 +61,8 @@ def image_diff(path1, path2, outpath, diffcolor):
             if pix1[x,y] != pix2[x,y]:
                 pix2[x, y] = value
     im2.save(outpath)
+
+    return (rmsdiff, width, height)
 
 class TestError(RuntimeError):
     pass
@@ -91,9 +106,9 @@ class ScreenshotTestStep(TestStep):
         else:
             run.d.save_screenshot(new)
             if not images_identical(original, new):
-                diff = os.path.join(run.test.path, 'diff.png')
-                image_diff(original, new, diff, run.diffcolor)
-                raise TestError('Screenshot %r was different; compare %r with %r. See %r for the comparison.' % (self.index, original, new, diff))
+                diffpath = os.path.join(run.test.path, 'diff.png')
+                diff = image_diff(original, new, diffpath, run.diffcolor)
+                raise TestError('Screenshot %s was different; compare %s with %s. See %s for the comparison. diff=%r' % (self.index, original, new, diffpath, diff))
 
 class Test(object):
     def __init__(self, screen_size, path):
