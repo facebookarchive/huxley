@@ -159,7 +159,7 @@ class TestRun(object):
             last_offset_time = step.offset_time
 
     @classmethod
-    def record(cls, d, url, screen_size, path, diffcolor, remote_d):
+    def record(cls, d, url, screen_size, path, diffcolor, remote_d, sleepfactor):
         print 'Begin record'
         if not remote_d:
             remote_d = d
@@ -202,7 +202,7 @@ window._getJonxEvents = function() { return events; };
         print
         raw_input('Up next, we will re-run your actions to generate automated screenshots (this is because Selenium doesn\'t activate hover CSS states). Please pay attention to the test run. Press enter to start.')
         print
-        cls.rerecord(test, url, remote_d, diffcolor)
+        cls.rerecord(test, url, remote_d, sleepfactor, diffcolor)
 
         return test
 
@@ -252,7 +252,7 @@ def main(url, filename, record=False, rerecord=False, sleepfactor=1.0, browser='
             if remote:
                 remote_d = webdriver.Remote(remote_d, CAPABILITIES[browser])
             with open(jsonfile, 'w') as f:
-                f.write(jsonpickle.encode(TestRun.record(d, url, screensize, filename, diffcolor, remote_d)))
+                f.write(jsonpickle.encode(TestRun.record(d, url, screensize, filename, diffcolor, remote_d, sleepfactor)))
                 print 'Test recorded successfully'
         elif rerecord:
             with open(jsonfile, 'r') as f:
