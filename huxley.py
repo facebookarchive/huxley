@@ -2,10 +2,13 @@
 # TODO: support page reloads
 
 import contextlib
+import json
 import math
 import operator
 import os
+import sys
 import time
+
 import jsonpickle
 from selenium import webdriver
 import Image
@@ -64,6 +67,33 @@ def image_diff(path1, path2, outpath, diffcolor):
     im2.save(outpath)
 
     return (rmsdiff, width, height)
+
+def get_post_js(url, postdata):
+    markup = '<form method="post" action="%s">' % url
+    for k in postdata.keys():
+        markup += '<input type="hidden" name="%s" />' % k
+    markup += '</form>'
+
+    js = 'var container = document.createElement("div"); container.innerHTML = %s;' % json.dumps(markup)
+
+    for (i, v) in enumerate(postdata.values()):
+        if not isinstance(v, basestring):
+            # TODO: gross
+            v = json.dumps(v)
+        js += 'container.children[0].children[%d].value = %s;' % (i, json.dumps(v))
+
+    js += 'document.body.appendChild(container);'
+    js += 'container.children[0].submit();'
+    return '(function(){ ' + js + '; })();';
+
+def navigate(d, url):
+    href, postdata = url
+    d.get('about:blank')
+    d.refresh()
+    if not postdata:
+        d.get(href)
+    else:
+        d.execute_script(get_post_js(href, postdata))
 
 class TestError(RuntimeError):
     pass
@@ -148,9 +178,7 @@ class TestRun(object):
 
     def _playback(self, sleepfactor):
         self.d.set_window_size(*self.test.screen_size)
-        self.d.get('about:blank')
-        self.d.refresh()
-        self.d.get(self.url)
+        navigate(self.d, self.url)
         last_offset_time = 0
         for step in self.test.steps:
             sleep_time = (step.offset_time - last_offset_time) * sleepfactor
@@ -169,9 +197,7 @@ class TestRun(object):
         test = Test(screen_size)
         run = TestRun(test, path, url, d, TestRunModes.RECORD, diffcolor)
         d.set_window_size(*screen_size)
-        d.get('about:blank')
-        d.refresh()
-        d.get(run.url)
+        navigate(d, url)
         start_time = d.execute_script('return Date.now();')
         d.execute_script('''
 (function() {
@@ -220,7 +246,9 @@ CAPABILITIES = {
 }
 
 @plac.annotations(
+    url=plac.Annotation('URL to hit'),
     filename=plac.Annotation('Test file location'),
+    postdata=plac.Annotation('File for POST data or - for stdin'),
     record=plac.Annotation('Record a test', 'flag', 'r', metavar='URL'),
     rerecord=plac.Annotation('Re-run the test but take new screenshots', 'flag', 'R'),
     sleepfactor=plac.Annotation('Sleep interval multiplier', 'option', 'f', float, metavar='FLOAT'),
@@ -229,7 +257,13 @@ CAPABILITIES = {
     diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
     screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
 )
-def main(url, filename, record=False, rerecord=False, sleepfactor=1.0, browser='firefox', remote=None, diffcolor='0,255,0', screensize='1024x768'):
+def main(url, filename, postdata=None, record=False, rerecord=False, sleepfactor=1.0, browser='firefox', remote=None, diffcolor='0,255,0', screensize='1024x768'):
+    if postdata:
+        if postdata == '-':
+            postdata = sys.stdin.read()
+        else:
+            with open(postdata, 'r') as f:
+                postdata = json.loads(f.read())
     try:
         if remote:
             d = webdriver.Remote(remote, CAPABILITIES[browser])
@@ -252,15 +286,15 @@ def main(url, filename, record=False, rerecord=False, sleepfactor=1.0, browser='
     with contextlib.closing(d):
         if record:
             with open(jsonfile, 'w') as f:
-                f.write(jsonpickle.encode(TestRun.record(d, url, screensize, filename, diffcolor, sleepfactor)))
+                f.write(jsonpickle.encode(TestRun.record(d, (url, postdata), screensize, filename, diffcolor, sleepfactor)))
                 print 'Test recorded successfully'
         elif rerecord:
             with open(jsonfile, 'r') as f:
-                TestRun.rerecord(jsonpickle.decode(f.read()), filename, url, d, sleepfactor, diffcolor)
+                TestRun.rerecord(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor)
                 print 'Test rerecorded successfully'
         else:
             with open(jsonfile, 'r') as f:
-                TestRun.playback(jsonpickle.decode(f.read()), filename, url, d, sleepfactor, diffcolor)
+                TestRun.playback(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor)
                 print 'Test played back successfully'
 
 if __name__ == '__main__':
