@@ -91,8 +91,9 @@ class ScreenshotTestStep(TestStep):
         else:
             run.d.save_screenshot(new)
             if not images_identical(original, new):
-                image_diff(original, new, os.path.join(run.test.path, 'diff.png'), run.diffcolor)
-                raise TestError('Screenshot %r was different; compare it with last.png. See diff.png for the comparison.' % self.index)
+                diff = os.path.join(run.test.path, 'diff.png')
+                image_diff(original, new, diff, run.diffcolor)
+                raise TestError('Screenshot %r was different; compare %r with %r. See %r for the comparison.' % (self.index, original, new, diff))
 
 class Test(object):
     def __init__(self, url, screen_size, start_time, path):
