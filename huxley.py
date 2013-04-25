@@ -96,11 +96,9 @@ class ScreenshotTestStep(TestStep):
                 raise TestError('Screenshot %r was different; compare %r with %r. See %r for the comparison.' % (self.index, original, new, diff))
 
 class Test(object):
-    def __init__(self, url, screen_size, start_time, path):
+    def __init__(self, screen_size, path):
         self.steps = []
-        self.url = url
         self.screen_size = screen_size
-        self.last_timestamp = start_time
         self.path = path
 
 class TestRunModes(object):
@@ -109,29 +107,34 @@ class TestRunModes(object):
     PLAYBACK = 3
 
 class TestRun(object):
-    def __init__(self, test, d, mode, diffcolor):
+    def __init__(self, test, url, d, mode, diffcolor):
         self.test = test
+        self.url = url
         self.d = d
         self.mode = mode
         self.diffcolor = diffcolor
 
     @classmethod
-    def rerecord(cls, test, d, diffcolor):
+    def rerecord(cls, test, url, d, diffcolor):
         print 'Begin rerecord'
-        run = TestRun(test, d, TestRunModes.RERECORD, diffcolor)
+        run = TestRun(test, url, d, TestRunModes.RERECORD, diffcolor)
         run._playback()
+        print
+        print 'Playing back to ensure the test is correct'
+        print
+        cls.playback(test, url, d, diffcolor)
 
     @classmethod
-    def playback(cls, test, d, diffcolor):
+    def playback(cls, test, url, d, diffcolor):
         print 'Begin playback'
-        run = TestRun(test, d, TestRunModes.PLAYBACK, diffcolor)
+        run = TestRun(test, url, d, TestRunModes.PLAYBACK, diffcolor)
         run._playback()
 
     def _playback(self):
         self.d.set_window_size(*self.test.screen_size)
         self.d.get('about:blank')
         self.d.refresh()
-        self.d.get(self.test.url)
+        self.d.get(self.url)
         last_offset_time = 0
         for step in self.test.steps:
             sleep_time = step.offset_time - last_offset_time
@@ -149,13 +152,13 @@ class TestRun(object):
             os.makedirs(path)
         except:
             pass
-        start_time = d.execute_script('return Date.now();')
-        test = Test(url, screen_size, start_time, path)
-        run = TestRun(test, d, TestRunModes.RECORD, diffcolor)
+        test = Test(screen_size, path)
+        run = TestRun(test, url, d, TestRunModes.RECORD, diffcolor)
         d.set_window_size(*screen_size)
         d.get('about:blank')
         d.refresh()
-        d.get(test.url)
+        d.get(run.url)
+        start_time = d.execute_script('return Date.now();')
         d.execute_script('''
 (function() {
 var events = [];
@@ -184,11 +187,7 @@ window._getJonxEvents = function() { return events; };
         print
         raw_input('Up next, we will re-run your actions to generate automated screenshots (this is because Selenium doesn\'t activate hover CSS states). Please pay attention to the test run. Press enter to start.')
         print
-        cls.rerecord(test, remote_d, diffcolor)
-        print
-        print 'Playing back to ensure the test is correct'
-        print
-        cls.playback(test, remote_d, diffcolor)
+        cls.rerecord(test, url, remote_d, diffcolor)
 
         return test
 
@@ -208,14 +207,14 @@ CAPABILITIES = {
 
 @plac.annotations(
     filename=plac.Annotation('Test file location'),
-    record=plac.Annotation('URL to open for test recording', 'option', 'r', metavar='URL'),
+    record=plac.Annotation('Record a test', 'flag', 'r', metavar='URL'),
     rerecord=plac.Annotation('Re-run the test but take new screenshots', 'flag', 'R'),
     browser=plac.Annotation('Browser to use, either firefox, chrome, phantomjs, ie or opera.', 'option', 'b', str, metavar='NAME'),
     remote=plac.Annotation('Remote WebDriver to use', 'option', 'w', metavar='URL'),
     diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
     screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
 )
-def main(filename, record=None, rerecord=False, browser='firefox', remote=None, diffcolor='0,255,0', screensize='1024x768'):
+def main(url, filename, record=False, rerecord=False, browser='firefox', remote=None, diffcolor='0,255,0', screensize='1024x768'):
     try:
         d = DRIVERS[browser]()
         screensize = tuple(int(x) for x in screensize.split('x'))
@@ -237,15 +236,15 @@ def main(filename, record=None, rerecord=False, browser='firefox', remote=None, 
             if remote:
                 remote_d = webdriver.Remote(remote_d, CAPABILITIES[browser])
             with open(jsonfile, 'w') as f:
-                f.write(jsonpickle.encode(TestRun.record(d, record, screensize, filename, diffcolor, remote_d)))
+                f.write(jsonpickle.encode(TestRun.record(d, url, screensize, filename, diffcolor, remote_d)))
                 print 'Test recorded successfully'
         elif rerecord:
             with open(jsonfile, 'r') as f:
-                TestRun.rerecord(jsonpickle.decode(f.read()), d, diffcolor)
+                TestRun.rerecord(jsonpickle.decode(f.read()), url, d, diffcolor)
                 print 'Test rerecorded successfully'
         else:
             with open(jsonfile, 'r') as f:
-                TestRun.playback(jsonpickle.decode(f.read()), d, diffcolor)
+                TestRun.playback(jsonpickle.decode(f.read()), url, d, diffcolor)
                 print 'Test played back successfully'
 
 if __name__ == '__main__':
