@@ -27,24 +27,25 @@ def image_diff(path1, path2, outpath, diffcolor):
         raise ValueError('Different dimensions between %r and %r' % (path1, path2))
 
     mode = im1.mode
+
+    if mode == '1':
+        value = 255
+    elif mode == 'L':
+        value = 255
+    elif mode == 'RGB':
+        value = diffcolor
+    elif mode == 'RGBA':
+        value = diffcolor + (255,)
+    elif mode == 'P':
+        raise NotImplementedError('TODO: look up nearest palette color')
+    else:
+        raise NotImplementedError('Unexpected PNG mode')
+
     width,height = im1.size
 
     for y in xrange(height):
         for x in xrange(width):
             if pix1[x,y] != pix2[x,y]:
-                changed = True
-                if mode == '1':
-                    value = 255
-                elif mode == 'L':
-                    value = 255
-                elif mode == 'RGB':
-                    value = diffcolor
-                elif mode == 'RGBA':
-                    value = diffcolor + (255,)
-                elif mode == 'P':
-                    raise NotImplementedError('TODO: look up nearest pallette color')
-                else:
-                    raise NotImplementedError('Unexpected PNG mode')
                 pix2[x, y] = value
     im2.save(outpath)
 
@@ -139,8 +140,10 @@ class TestRun(object):
             last_offset_time = step.offset_time
 
     @classmethod
-    def record(cls, d, url, screen_size, path, diffcolor):
+    def record(cls, d, url, screen_size, path, diffcolor, remote_d):
         print 'Begin record'
+        if not remote_d:
+            remote_d = d
         try:
             os.makedirs(path)
         except:
@@ -177,8 +180,8 @@ window._getJonxEvents = function() { return events; };
 
         test.steps = steps
 
-        cls.rerecord(test, d, diffcolor)
-        cls.playback(test, d, diffcolor)
+        cls.rerecord(test, remote_d, diffcolor)
+        cls.playback(test, remote_d, diffcolor)
 
         return test
 
@@ -187,17 +190,25 @@ DRIVERS = {
     'chrome': webdriver.Chrome,
     'ie': webdriver.Ie,
     'opera': webdriver.Opera
-}    
+}
+
+CAPABILITIES = {
+    'firefox': webdriver.DesiredCapabilities.FIREFOX,
+    'chrome': webdriver.DesiredCapabilities.CHROME,
+    'ie': webdriver.DesiredCapabilities.INTERNETEXPLORER,
+    'opera': webdriver.DesiredCapabilities.OPERA
+}
 
 @plac.annotations(
     filename=plac.Annotation('Test file location'),
-    record=plac.Annotation('URL to open for test recording', 'option', 'r', str, metavar='URL'),
+    record=plac.Annotation('URL to open for test recording', 'option', 'r', metavar='URL'),
     rerecord=plac.Annotation('Re-run the test but take new screenshots', 'flag', 'R'),
     browser=plac.Annotation('Browser to use, either firefox, chrome, phantomjs, ie or opera.', 'option', 'b', str, metavar='NAME'),
+    remote=plac.Annotation('Remote WebDriver to use', 'option', 'w', metavar='URL'),
     diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
     screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
 )
-def main(filename, record='', rerecord=False, browser='firefox', diffcolor='0,255,0', screensize='1024x768'):
+def main(filename, record=None, rerecord=False, browser='firefox', remote=None, diffcolor='0,255,0', screensize='1024x768'):
     try:
         d = DRIVERS[browser]()
         screensize = tuple(int(x) for x in screensize.split('x'))
@@ -214,9 +225,12 @@ def main(filename, record='', rerecord=False, browser='firefox', diffcolor='0,25
     jsonfile = os.path.join(filename, 'record.json')
 
     with contextlib.closing(d):
-        if len(record) > 0:
+        if record:
+            remote_d = None
+            if remote:
+                remote_d = webdriver.Remote(remote_d, CAPABILITIES[browser])
             with open(jsonfile, 'w') as f:
-                f.write(jsonpickle.encode(TestRun.record(d, record, screensize, filename, diffcolor)))
+                f.write(jsonpickle.encode(TestRun.record(d, record, screensize, filename, diffcolor, remote_d)))
                 print 'Test recorded successfully'
         elif rerecord:
             with open(jsonfile, 'r') as f:
