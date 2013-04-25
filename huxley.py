@@ -181,7 +181,13 @@ window._getJonxEvents = function() { return events; };
 
         test.steps = steps
 
+        print
+        raw_input('Up next, we will re-run your actions to generate automated screenshots (this is because Selenium doesn\'t activate hover CSS states). Please pay attention to the test run. Press enter to start.')
+        print
         cls.rerecord(test, remote_d, diffcolor)
+        print
+        print 'Playing back to ensure the test is correct'
+        print
         cls.playback(test, remote_d, diffcolor)
 
         return test
