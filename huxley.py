@@ -15,19 +15,22 @@ import Image
 import ImageChops
 import plac
 
+
 def rmsdiff_2011(im1, im2):
     "Calculate the root-mean-square difference between two images"
     diff = ImageChops.difference(im1, im2)
     h = diff.histogram()
-    sq = (value*(idx**2) for idx, value in enumerate(h))
+    sq = (value * (idx ** 2) for idx, value in enumerate(h))
     sum_of_squares = sum(sq)
-    rms = math.sqrt(sum_of_squares/float(im1.size[0] * im1.size[1]))
+    rms = math.sqrt(sum_of_squares / float(im1.size[0] * im1.size[1]))
     return rms
+
 
 def images_identical(path1, path2):
     im1 = Image.open(path1)
     im2 = Image.open(path2)
     return ImageChops.difference(im1, im2).getbbox() is None
+
 
 def image_diff(path1, path2, outpath, diffcolor):
     im1 = Image.open(path1)
@@ -41,7 +44,7 @@ def image_diff(path1, path2, outpath, diffcolor):
     if im1.mode != im2.mode:
         raise ValueError('Different pixel modes between %r and %r' % (path1, path2))
     if im1.size != im2.size:
-        raise ValueError('Different dimensions between %r and %r' % (path1, path2))
+        raise ValueError('Different dimensions between %r (%r) and %r (%r)' % (path1, im1.size, path2, im2.size))
 
     mode = im1.mode
 
@@ -58,15 +61,16 @@ def image_diff(path1, path2, outpath, diffcolor):
     else:
         raise NotImplementedError('Unexpected PNG mode')
 
-    width,height = im1.size
+    width, height = im1.size
 
     for y in xrange(height):
         for x in xrange(width):
-            if pix1[x,y] != pix2[x,y]:
+            if pix1[x, y] != pix2[x, y]:
                 pix2[x, y] = value
     im2.save(outpath)
 
     return (rmsdiff, width, height)
+
 
 def get_post_js(url, postdata):
     markup = '<form method="post" action="%s">' % url
@@ -84,7 +88,8 @@ def get_post_js(url, postdata):
 
     js += 'document.body.appendChild(container);'
     js += 'container.children[0].submit();'
-    return '(function(){ ' + js + '; })();';
+    return '(function(){ ' + js + '; })();'
+
 
 def navigate(d, url):
     href, postdata = url
@@ -95,8 +100,10 @@ def navigate(d, url):
     else:
         d.execute_script(get_post_js(href, postdata))
 
+
 class TestError(RuntimeError):
     pass
+
 
 class TestStep(object):
     def __init__(self, offset_time):
@@ -105,8 +112,10 @@ class TestStep(object):
     def execute(self, run):
         raise NotImplementedError
 
+
 class ClickTestStep(TestStep):
     CLICK_ID = '_jonxClick'
+
     def __init__(self, offset_time, pos):
         super(ClickTestStep, self).__init__(offset_time)
         self.pos = pos
@@ -116,9 +125,12 @@ class ClickTestStep(TestStep):
         # Work around a bug in ActionChains.move_by_offset()
         id = run.d.execute_script('return document.elementFromPoint(%d, %d).id;' % tuple(self.pos))
         if id is None:
-            run.d.execute_script('document.elementFromPoint(%d, %d).id = %r;' % (self.pos[0], self.pos[1], self.CLICK_ID))
+            run.d.execute_script(
+                'document.elementFromPoint(%d, %d).id = %r;' % (self.pos[0], self.pos[1], self.CLICK_ID)
+            )
             id = self.CLICK_ID
         run.d.find_element_by_id(id).click()
+
 
 class ScreenshotTestStep(TestStep):
     def __init__(self, offset_time, run, index):
@@ -139,17 +151,25 @@ class ScreenshotTestStep(TestStep):
             if not images_identical(original, new):
                 diffpath = os.path.join(run.path, 'diff.png')
                 diff = image_diff(original, new, diffpath, run.diffcolor)
-                raise TestError('Screenshot %s was different; compare %s with %s. See %s for the comparison. diff=%r' % (self.index, original, new, diffpath, diff))
+                raise TestError(
+                    'Screenshot %s was different; compare %s with %s. See %s ' +
+                    'for the comparison. diff=%r' % (
+                        self.index, original, new, diffpath, diff
+                    )
+                )
+
 
 class Test(object):
     def __init__(self, screen_size):
         self.steps = []
         self.screen_size = screen_size
 
+
 class TestRunModes(object):
     RECORD = 1
     RERECORD = 2
     PLAYBACK = 3
+
 
 class TestRun(object):
     def __init__(self, test, path, url, d, mode, diffcolor):
@@ -225,7 +245,11 @@ window._getJonxEvents = function() { return events; };
         test.steps = steps
 
         print
-        raw_input('Up next, we will re-run your actions to generate automated screenshots (this is because Selenium doesn\'t activate hover CSS states). Please pay attention to the test run. Press enter to start.')
+        raw_input(
+            'Up next, we\'ll re-run your actions to generate automated screenshots ' +
+            '(this is because Selenium doesn\'t activate hover CSS states). Please pay attention ' +
+            'to the test run. Press enter to start.'
+        )
         print
         cls.rerecord(test, path, url, d, sleepfactor, diffcolor)
 
@@ -245,6 +269,7 @@ CAPABILITIES = {
     'opera': webdriver.DesiredCapabilities.OPERA
 }
 
+
 @plac.annotations(
     url=plac.Annotation('URL to hit'),
     filename=plac.Annotation('Test file location'),
@@ -252,12 +277,27 @@ CAPABILITIES = {
     record=plac.Annotation('Record a test', 'flag', 'r', metavar='URL'),
     rerecord=plac.Annotation('Re-run the test but take new screenshots', 'flag', 'R'),
     sleepfactor=plac.Annotation('Sleep interval multiplier', 'option', 'f', float, metavar='FLOAT'),
-    browser=plac.Annotation('Browser to use, either firefox, chrome, phantomjs, ie or opera.', 'option', 'b', str, metavar='NAME'),
+    browser=plac.Annotation(
+        'Browser to use, either firefox, chrome, phantomjs, ie or opera.', 'option', 'b', str, metavar='NAME'
+    ),
     remote=plac.Annotation('Remote WebDriver to use', 'option', 'w', metavar='URL'),
     diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
     screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
+    autorerecord=plac.Annotation('Playback test and automatically rerecord if it fails', 'flag', 'a')
 )
-def main(url, filename, postdata=None, record=False, rerecord=False, sleepfactor=1.0, browser='firefox', remote=None, diffcolor='0,255,0', screensize='1024x768'):
+def main(
+        url,
+        filename,
+        postdata=None,
+        record=False,
+        rerecord=False,
+        sleepfactor=1.0,
+        browser='firefox',
+        remote=None,
+        diffcolor='0,255,0',
+        screensize='1024x768',
+        autorerecord=False):
+
     if postdata:
         if postdata == '-':
             postdata = sys.stdin.read()
@@ -286,11 +326,26 @@ def main(url, filename, postdata=None, record=False, rerecord=False, sleepfactor
     with contextlib.closing(d):
         if record:
             with open(jsonfile, 'w') as f:
-                f.write(jsonpickle.encode(TestRun.record(d, (url, postdata), screensize, filename, diffcolor, sleepfactor)))
+                f.write(
+                    jsonpickle.encode(
+                        TestRun.record(d, (url, postdata), screensize, filename, diffcolor, sleepfactor)
+                    )
+                )
                 print 'Test recorded successfully'
         elif rerecord:
             with open(jsonfile, 'r') as f:
                 TestRun.rerecord(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor)
+                print 'Test rerecorded successfully'
+        elif autorerecord:
+            with open(jsonfile, 'r') as f:
+                test = jsonpickle.decode(f.read())
+            try:
+                print 'Running test to determine if we need to rerecord'
+                TestRun.playback(test, filename, (url, postdata), d, sleepfactor, diffcolor)
+                print 'Test played back successfully'
+            except:
+                print 'Test failed, rerecording...'
+                TestRun.rerecord(test, filename, (url, postdata), d, sleepfactor, diffcolor)
                 print 'Test rerecorded successfully'
         else:
             with open(jsonfile, 'r') as f:
