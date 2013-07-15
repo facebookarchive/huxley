@@ -8,13 +8,13 @@ import operator
 import os
 import sys
 import time
+import unittest
 
 import jsonpickle
 from selenium import webdriver
 import Image
 import ImageChops
 import plac
-
 
 def rmsdiff_2011(im1, im2):
     "Calculate the root-mean-square difference between two images"
@@ -42,9 +42,9 @@ def image_diff(path1, path2, outpath, diffcolor):
     pix2 = im2.load()
 
     if im1.mode != im2.mode:
-        raise ValueError('Different pixel modes between %r and %r' % (path1, path2))
+        raise TestError('Different pixel modes between %r and %r' % (path1, path2))
     if im1.size != im2.size:
-        raise ValueError('Different dimensions between %r (%r) and %r (%r)' % (path1, im1.size, path2, im2.size))
+        raise TestError('Different dimensions between %r (%r) and %r (%r)' % (path1, im1.size, path2, im2.size))
 
     mode = im1.mode
 
@@ -124,7 +124,7 @@ class ClickTestStep(TestStep):
         print '  Clicking', self.pos
         # Work around a bug in ActionChains.move_by_offset()
         id = run.d.execute_script('return document.elementFromPoint(%d, %d).id;' % tuple(self.pos))
-        if id is None:
+        if id is None or id == '':
             run.d.execute_script(
                 'document.elementFromPoint(%d, %d).id = %r;' % (self.pos[0], self.pos[1], self.CLICK_ID)
             )
@@ -152,8 +152,8 @@ class ScreenshotTestStep(TestStep):
                 diffpath = os.path.join(run.path, 'diff.png')
                 diff = image_diff(original, new, diffpath, run.diffcolor)
                 raise TestError(
-                    'Screenshot %s was different; compare %s with %s. See %s ' +
-                    'for the comparison. diff=%r' % (
+                    ('Screenshot %s was different; compare %s with %s. See %s ' +
+                    'for the comparison. diff=%r') % (
                         self.index, original, new, diffpath, diff
                     )
                 )
@@ -208,7 +208,7 @@ class TestRun(object):
             last_offset_time = step.offset_time
 
     @classmethod
-    def record(cls, d, url, screen_size, path, diffcolor, sleepfactor):
+    def record(cls, d, remote_d, url, screen_size, path, diffcolor, sleepfactor):
         print 'Begin record'
         try:
             os.makedirs(path)
@@ -251,9 +251,64 @@ window._getJonxEvents = function() { return events; };
             'to the test run. Press enter to start.'
         )
         print
-        cls.rerecord(test, path, url, d, sleepfactor, diffcolor)
+        cls.rerecord(test, path, url, remote_d, sleepfactor, diffcolor)
 
         return test
+
+
+# Python unittest integration. These fail when the screen shots change, and they
+# will pass the next time since they write new ones.
+class HuxleyTestCase(unittest.TestCase):
+    recording = False
+    playback_only = False
+    local_webdriver_url = os.environ.get('HUXLEY_WEBDRIVER_LOCAL', 'http://localhost:4444/wd/hub')
+    remote_webdriver_url = os.environ.get('HUXLEY_WEBDRIVER_REMOTE', 'http://localhost:4443/wd/hub')
+
+    def huxley(self, filename, url, postdata=None, sleepfactor=1.0):
+        msg = 'Running Huxley test: ' + os.path.basename(filename)
+        print
+        print '-' * len(msg)
+        print msg
+        print '-' * len(msg)
+        if self.recording:
+            r = main(
+                url,
+                filename,
+                postdata,
+                local=self.local_webdriver_url,
+                remote=self.remote_webdriver_url,
+                record=True
+            )
+        else:
+            r = main(
+                url,
+                filename,
+                postdata,
+                remote=self.remote_webdriver_url,
+                sleepfactor=sleepfactor,
+                autorerecord=not self.playback_only
+            )
+
+        self.assertEqual(0, r, 'New screenshots were taken and written. Please be sure to review and check in.')
+
+
+def unittest_main(module='__main__'):
+    if len(sys.argv) > 1 and sys.argv[1] == 'record':
+        # Create a new test by recording the user's browsing session
+        HuxleyTestCase.recording = True
+        del sys.argv[1]
+    elif len(sys.argv) > 1 and sys.argv[1] == 'playback':
+        # When running in a continuous test runner you may want the
+        # tests to continue to fail (rather than re-recording new screen
+        # shots) to indicate a commit that changed a screen shot but did
+        # not rerecord. TODO: we may want to build in auto-retry functionality
+        # and automatically back off the sleep factor.
+        HuxleyTestCase.playback_only = True
+        del sys.argv[1]
+    # The default behavior is to play back the test and save new screen shots
+    # if they change.
+
+    unittest.main(module)
 
 DRIVERS = {
     'firefox': webdriver.Firefox,
@@ -281,6 +336,7 @@ CAPABILITIES = {
         'Browser to use, either firefox, chrome, phantomjs, ie or opera.', 'option', 'b', str, metavar='NAME'
     ),
     remote=plac.Annotation('Remote WebDriver to use', 'option', 'w', metavar='URL'),
+    local=plac.Annotation('Local WebDriver URL to use', 'option', 'l', metavar='URL'),
     diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
     screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
     autorerecord=plac.Annotation('Playback test and automatically rerecord if it fails', 'flag', 'a')
@@ -294,6 +350,7 @@ def main(
         sleepfactor=1.0,
         browser='firefox',
         remote=None,
+        local=None,
         diffcolor='0,255,0',
         screensize='1024x768',
         autorerecord=False):
@@ -325,17 +382,24 @@ def main(
 
     with contextlib.closing(d):
         if record:
-            with open(jsonfile, 'w') as f:
-                f.write(
-                    jsonpickle.encode(
-                        TestRun.record(d, (url, postdata), screensize, filename, diffcolor, sleepfactor)
+            if local:
+                local_d = webdriver.Remote(local, CAPABILITIES[browser])
+            else:
+                local_d = d
+            with contextlib.closing(local_d):
+                with open(jsonfile, 'w') as f:
+                    f.write(
+                        jsonpickle.encode(
+                            TestRun.record(local_d, d, (url, postdata), screensize, filename, diffcolor, sleepfactor)
+                        )
                     )
-                )
-                print 'Test recorded successfully'
+            print 'Test recorded successfully'
+            return 0
         elif rerecord:
             with open(jsonfile, 'r') as f:
                 TestRun.rerecord(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor)
                 print 'Test rerecorded successfully'
+                return 0
         elif autorerecord:
             with open(jsonfile, 'r') as f:
                 test = jsonpickle.decode(f.read())
@@ -343,14 +407,17 @@ def main(
                 print 'Running test to determine if we need to rerecord'
                 TestRun.playback(test, filename, (url, postdata), d, sleepfactor, diffcolor)
                 print 'Test played back successfully'
-            except:
+                return 0
+            except TestError:
                 print 'Test failed, rerecording...'
                 TestRun.rerecord(test, filename, (url, postdata), d, sleepfactor, diffcolor)
                 print 'Test rerecorded successfully'
+                return 2
         else:
             with open(jsonfile, 'r') as f:
                 TestRun.playback(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor)
                 print 'Test played back successfully'
+                return 0
 
 if __name__ == '__main__':
-    plac.call(main)
+    sys.exit(plac.call(main))
