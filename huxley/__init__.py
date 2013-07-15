@@ -162,19 +162,22 @@ class ScreenshotTestStep(TestStep):
             run.d.save_screenshot(original)
         else:
             run.d.save_screenshot(new)
-            if not images_identical(original, new):
-                if run.save_diff:
-                    diffpath = os.path.join(run.path, 'diff.png')
-                    diff = image_diff(original, new, diffpath, run.diffcolor)
-                    raise TestError(
-                        ('Screenshot %s was different; compare %s with %s. See %s ' +
-                         'for the comparison. diff=%r') % (
-                            self.index, original, new, diffpath, diff
+            try:
+                if not images_identical(original, new):
+                    if run.save_diff:
+                        diffpath = os.path.join(run.path, 'diff.png')
+                        diff = image_diff(original, new, diffpath, run.diffcolor)
+                        raise TestError(
+                            ('Screenshot %s was different; compare %s with %s. See %s ' +
+                             'for the comparison. diff=%r') % (
+                                self.index, original, new, diffpath, diff
+                            )
                         )
-                    )
-                else:
-                    raise TestError('Screenshot %s was different.' % self.index)
-
+                    else:
+                        raise TestError('Screenshot %s was different.' % self.index)
+            finally:
+                if not run.save_diff:
+                    os.unlink(new)
 
 class Test(object):
     def __init__(self, screen_size):
@@ -264,8 +267,8 @@ window._getHuxleyEvents = function() { return events; };
 
         print
         raw_input(
-            'Up next, we\'ll re-run your actions to generate automated screenshots ' +
-            '(this is because Selenium doesn\'t activate hover CSS states). ' +
+            'Up next, we\'ll re-run your actions to generate screenshots ' +
+            'to ensure they are pixel-perfect when running automated. ' +
             'Press enter to start.'
         )
         print
@@ -357,8 +360,8 @@ CAPABILITIES = {
     local=plac.Annotation('Local WebDriver URL to use', 'option', 'l', metavar='URL'),
     diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
     screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
-    autorerecord=plac.Annotation('Playback test and automatically rerecord if it fails', 'flag', 'a')
-    save_diff=plac.Annotation('Save an image diff as diff.png', 'flag', 'e')
+    autorerecord=plac.Annotation('Playback test and automatically rerecord if it fails', 'flag', 'a'),
+    save_diff=plac.Annotation('Save information about failures as last.png and diff.png', 'flag', 'e')
 )
 def main(
         url,

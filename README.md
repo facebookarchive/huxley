@@ -27,3 +27,7 @@ You should run Huxley in playback mode before submitting code for review and in 
 When screenshots have changed, those screenshot changes will show up in your commit. A designer can review them to be sure they're OK. And your continuous integration system can alert you if you forgot to run Huxley.
 
 By default, Huxley will overwrite the old screenshots with new ones. That means you don't have to rewrite anything when your UI changes like you would with a traditional WebDriver test -- Huxley will just take a new screenshot for you and when it's checked in your test is updated!
+
+## Getting started
+
+See `example/` for an example. Note: you should be running selenium-server on localhost as well as run `python -m SimpleHTTPServer` from `example/` for it to work out-of-the-box. Then just run `python example.py` to run Huxley.

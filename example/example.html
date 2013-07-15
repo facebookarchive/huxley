@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hello Huxley!</title>
+    <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/zepto/1.0/zepto.min.js"></script>
+    <script>
+      $(document).ready(function() {
+        $('#toggleLink').click(function() {
+          $(this).toggleClass('btn-primary');
+        });
+      });
+    </script>
+  </head>
+  <body>
+
+    <div class="container">
+      <h1>My test app</h1>
+
+      <p><a href="javascript:;" id="toggleLink" class="btn">Click me to toggle!</a></p>
+    </div>
+  </body>
+</html>
