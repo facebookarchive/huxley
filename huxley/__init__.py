@@ -163,14 +163,17 @@ class ScreenshotTestStep(TestStep):
         else:
             run.d.save_screenshot(new)
             if not images_identical(original, new):
-                diffpath = os.path.join(run.path, 'diff.png')
-                diff = image_diff(original, new, diffpath, run.diffcolor)
-                raise TestError(
-                    ('Screenshot %s was different; compare %s with %s. See %s ' +
-                    'for the comparison. diff=%r') % (
-                        self.index, original, new, diffpath, diff
+                if run.save_diff:
+                    diffpath = os.path.join(run.path, 'diff.png')
+                    diff = image_diff(original, new, diffpath, run.diffcolor)
+                    raise TestError(
+                        ('Screenshot %s was different; compare %s with %s. See %s ' +
+                         'for the comparison. diff=%r') % (
+                            self.index, original, new, diffpath, diff
+                        )
                     )
-                )
+                else:
+                    raise TestError('Screenshot %s was different.' % self.index)
 
 
 class Test(object):
@@ -186,28 +189,29 @@ class TestRunModes(object):
 
 
 class TestRun(object):
-    def __init__(self, test, path, url, d, mode, diffcolor):
+    def __init__(self, test, path, url, d, mode, diffcolor, save_diff):
         self.test = test
         self.path = path
         self.url = url
         self.d = d
         self.mode = mode
         self.diffcolor = diffcolor
+        self.save_diff = save_diff
 
     @classmethod
-    def rerecord(cls, test, path, url, d, sleepfactor, diffcolor):
+    def rerecord(cls, test, path, url, d, sleepfactor, diffcolor, save_diff):
         print 'Begin rerecord'
-        run = TestRun(test, path, url, d, TestRunModes.RERECORD, diffcolor)
+        run = TestRun(test, path, url, d, TestRunModes.RERECORD, diffcolor, save_diff)
         run._playback(sleepfactor)
         print
         print 'Playing back to ensure the test is correct'
         print
-        cls.playback(test, path, url, d, sleepfactor, diffcolor)
+        cls.playback(test, path, url, d, sleepfactor, diffcolor, save_diff)
 
     @classmethod
-    def playback(cls, test, path, url, d, sleepfactor, diffcolor):
+    def playback(cls, test, path, url, d, sleepfactor, diffcolor, save_diff):
         print 'Begin playback'
-        run = TestRun(test, path, url, d, TestRunModes.PLAYBACK, diffcolor)
+        run = TestRun(test, path, url, d, TestRunModes.PLAYBACK, diffcolor, save_diff)
         run._playback(sleepfactor)
 
     def _playback(self, sleepfactor):
@@ -222,14 +226,14 @@ class TestRun(object):
             last_offset_time = step.offset_time
 
     @classmethod
-    def record(cls, d, remote_d, url, screen_size, path, diffcolor, sleepfactor):
+    def record(cls, d, remote_d, url, screen_size, path, diffcolor, sleepfactor, save_diff):
         print 'Begin record'
         try:
             os.makedirs(path)
         except:
             pass
         test = Test(screen_size)
-        run = TestRun(test, path, url, d, TestRunModes.RECORD, diffcolor)
+        run = TestRun(test, path, url, d, TestRunModes.RECORD, diffcolor, save_diff)
         d.set_window_size(*screen_size)
         navigate(d, url)
         start_time = d.execute_script('return Date.now();')
@@ -265,7 +269,7 @@ window._getHuxleyEvents = function() { return events; };
             'Press enter to start.'
         )
         print
-        cls.rerecord(test, path, url, remote_d, sleepfactor, diffcolor)
+        cls.rerecord(test, path, url, remote_d, sleepfactor, diffcolor, save_diff)
 
         return test
 
@@ -354,6 +358,7 @@ CAPABILITIES = {
     diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
     screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
     autorerecord=plac.Annotation('Playback test and automatically rerecord if it fails', 'flag', 'a')
+    save_diff=plac.Annotation('Save an image diff as diff.png', 'flag', 'e')
 )
 def main(
         url,
@@ -367,7 +372,8 @@ def main(
         local=None,
         diffcolor='0,255,0',
         screensize='1024x768',
-        autorerecord=False):
+        autorerecord=False,
+        save_diff=False):
 
     if postdata:
         if postdata == '-':
@@ -404,14 +410,14 @@ def main(
                 with open(jsonfile, 'w') as f:
                     f.write(
                         jsonpickle.encode(
-                            TestRun.record(local_d, d, (url, postdata), screensize, filename, diffcolor, sleepfactor)
+                            TestRun.record(local_d, d, (url, postdata), screensize, filename, diffcolor, sleepfactor, save_diff)
                         )
                     )
             print 'Test recorded successfully'
             return 0
         elif rerecord:
             with open(jsonfile, 'r') as f:
-                TestRun.rerecord(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor)
+                TestRun.rerecord(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor, save_diff)
                 print 'Test rerecorded successfully'
                 return 0
         elif autorerecord:
@@ -419,17 +425,17 @@ def main(
                 test = jsonpickle.decode(f.read())
             try:
                 print 'Running test to determine if we need to rerecord'
-                TestRun.playback(test, filename, (url, postdata), d, sleepfactor, diffcolor)
+                TestRun.playback(test, filename, (url, postdata), d, sleepfactor, diffcolor, save_diff)
                 print 'Test played back successfully'
                 return 0
             except TestError:
                 print 'Test failed, rerecording...'
-                TestRun.rerecord(test, filename, (url, postdata), d, sleepfactor, diffcolor)
+                TestRun.rerecord(test, filename, (url, postdata), d, sleepfactor, diffcolor, save_diff)
                 print 'Test rerecorded successfully'
                 return 2
         else:
             with open(jsonfile, 'r') as f:
-                TestRun.playback(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor)
+                TestRun.playback(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor, save_diff)
                 print 'Test played back successfully'
                 return 0
 
