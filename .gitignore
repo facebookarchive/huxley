@@ -1,1 +1,5 @@
 *~
+Huxley.egg-info
+*.pyc
+build/
+dist/
