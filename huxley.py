@@ -96,7 +96,7 @@ def get_post_js(url, postdata):
 
     for (i, v) in enumerate(postdata.values()):
         if not isinstance(v, basestring):
-            # TODO: gross
+            # TODO: is there a cleaner way to do this?
             v = json.dumps(v)
         js += 'container.children[0].children[%d].value = %s;' % (i, json.dumps(v))
 
