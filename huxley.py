@@ -114,7 +114,7 @@ class TestStep(object):
 
 
 class ClickTestStep(TestStep):
-    CLICK_ID = '_jonxClick'
+    CLICK_ID = '_huxleyClick'
 
     def __init__(self, offset_time, pos):
         super(ClickTestStep, self).__init__(offset_time)
@@ -223,7 +223,7 @@ class TestRun(object):
 (function() {
 var events = [];
 window.addEventListener('click', function (e) { events.push([Date.now(), [e.clientX, e.clientY]]); }, true);
-window._getJonxEvents = function() { return events; };
+window._getHuxleyEvents = function() { return events; };
 })();
 ''')
         steps = []
@@ -236,7 +236,7 @@ window._getJonxEvents = function() { return events; };
             print len(steps), 'screenshots taken'
 
         # now capture the clicks
-        events = d.execute_script('return window._getJonxEvents();')
+        events = d.execute_script('return window._getHuxleyEvents();')
         for (timestamp, id) in events:
             steps.append(ClickTestStep(timestamp - start_time, id))
 
@@ -247,8 +247,8 @@ window._getJonxEvents = function() { return events; };
         print
         raw_input(
             'Up next, we\'ll re-run your actions to generate automated screenshots ' +
-            '(this is because Selenium doesn\'t activate hover CSS states). Please pay attention ' +
-            'to the test run. Press enter to start.'
+            '(this is because Selenium doesn\'t activate hover CSS states). ' +
+            'Press enter to start.'
         )
         print
         cls.rerecord(test, path, url, remote_d, sleepfactor, diffcolor)
@@ -262,7 +262,7 @@ class HuxleyTestCase(unittest.TestCase):
     recording = False
     playback_only = False
     local_webdriver_url = os.environ.get('HUXLEY_WEBDRIVER_LOCAL', 'http://localhost:4444/wd/hub')
-    remote_webdriver_url = os.environ.get('HUXLEY_WEBDRIVER_REMOTE', 'http://localhost:4443/wd/hub')
+    remote_webdriver_url = os.environ.get('HUXLEY_WEBDRIVER_REMOTE', 'http://localhost:4444/wd/hub')
 
     def huxley(self, filename, url, postdata=None, sleepfactor=1.0):
         msg = 'Running Huxley test: ' + os.path.basename(filename)
