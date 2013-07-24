@@ -45,6 +45,24 @@ class ClickTestStep(TestStep):
         run.d.find_element_by_id(id).click()
 
 
+class KeyTestStep(TestStep):
+    KEY_ID = '_huxleyKey'
+
+    def __init__(self, offset_time, key):
+        super(KeyTestStep, self).__init__(offset_time)
+        self.key = key
+
+    def execute(self, run):
+        print '  Typing', self.key
+        id = run.d.execute_script('return document.activeElement.id;')
+        if id is None or id == '':
+            run.d.execute_script(
+                'document.activeElement.id = %r;' % self.KEY_ID
+            )
+            id = self.KEY_ID
+        run.d.find_element_by_id(id).send_keys(self.key.lower())
+
+
 class ScreenshotTestStep(TestStep):
     def __init__(self, offset_time, run, index):
         super(ScreenshotTestStep, self).__init__(offset_time)

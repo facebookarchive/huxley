@@ -18,7 +18,7 @@ import os
 import time
 
 from huxley.consts import TestRunModes
-from huxley.steps import ScreenshotTestStep, ClickTestStep
+from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep
 
 def get_post_js(url, postdata):
     markup = '<form method="post" action="%s">' % url
@@ -109,7 +109,8 @@ class TestRun(object):
         d.execute_script('''
 (function() {
 var events = [];
-window.addEventListener('click', function (e) { events.push([Date.now(), [e.clientX, e.clientY]]); }, true);
+window.addEventListener('click', function (e) { events.push([Date.now(), 'click', [e.clientX, e.clientY]]); }, true);
+window.addEventListener('keyup', function (e) { events.push([Date.now(), 'keyup', String.fromCharCode(e.keyCode)]); }, true);
 window._getHuxleyEvents = function() { return events; };
 })();
 ''')
@@ -122,10 +123,13 @@ window._getHuxleyEvents = function() { return events; };
             steps.append(screenshot_step)
             print len(steps), 'screenshots taken'
 
-        # now capture the clicks
+        # now capture the events
         events = d.execute_script('return window._getHuxleyEvents();')
-        for (timestamp, id) in events:
-            steps.append(ClickTestStep(timestamp - start_time, id))
+        for (timestamp, type, params) in events:
+            if type == 'click':
+                steps.append(ClickTestStep(timestamp - start_time, params))
+            elif type == 'keyup':
+                steps.append(KeyTestStep(timestamp - start_time, params))
 
         steps.sort(key=operator.attrgetter('offset_time'))
 
