@@ -57,6 +57,8 @@ class Test(object):
 
 class TestRun(object):
     def __init__(self, test, path, url, d, mode, diffcolor, save_diff):
+        if not isinstance(test, Test):
+            raise ValueError('You must provide a Test instance')
         self.test = test
         self.path = path
         self.url = url
