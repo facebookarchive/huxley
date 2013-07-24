@@ -13,6 +13,6 @@
 # limitations under the License.
 
 from huxley.integration import HuxleyTestCase, unittest_main
-from huxley.cmdline import main
+from huxley.main import main
 
 __all__ = ['HuxleyTestCase', 'unittest_main', 'main']

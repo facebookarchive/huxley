@@ -16,7 +16,7 @@ import os
 import unittest
 import sys
 
-from huxley.cmdline import main
+from huxley.main import main
 
 # Python unittest integration. These fail when the screen shots change, and they
 # will pass the next time since they write new ones.
