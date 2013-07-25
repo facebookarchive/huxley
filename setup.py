@@ -8,6 +8,11 @@ setup(
     version = '0.1',
     packages = find_packages(),
     install_requires = open(os.path.join(DIRNAME, 'requirements.txt'), 'r').readlines(),
+    entry_points = {
+        'console_scripts': [
+            'huxley=huxley.cmdline:main'
+        ]
+    },
     author = 'Pete Hunt',
     author_email = 'pete.hunt@fb.com',
     description = 'Watches you browse, takes screenshots, tells you when they change.',
