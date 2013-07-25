@@ -70,7 +70,6 @@ def _main(
         print msg
         print '-' * len(msg)
 
-        print
         config = ConfigParser.RawConfigParser(
             allow_no_value=True
         )
@@ -78,6 +77,7 @@ def _main(
         for testname in config.sections():
             if names and (testname not in names):
                 continue
+            print 'Running test:', testname
             test_config = dict(config.items(testname))
             url = config.get(testname, 'url')
             default_filename = os.path.join(
@@ -114,6 +114,7 @@ def _main(
                     autorerecord=not playback_only
                 )
             new_screenshots = new_screenshots and (r != 0)
+            print
 
     if new_screenshots:
         return ExitCodes.NEW_SCREENSHOTS
