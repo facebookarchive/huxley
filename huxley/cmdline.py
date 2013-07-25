@@ -113,10 +113,11 @@ def _main(
                     sleepfactor=sleepfactor,
                     autorerecord=not playback_only
                 )
-            new_screenshots = new_screenshots and (r != 0)
+            new_screenshots = new_screenshots or (r != 0)
             print
 
     if new_screenshots:
+        print '** New screenshots were written; please verify that they are correct. **'
         return ExitCodes.NEW_SCREENSHOTS
     else:
         return ExitCodes.OK
