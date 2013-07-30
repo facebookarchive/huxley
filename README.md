@@ -89,3 +89,26 @@ Integration tests sometimes get a bad rap for testing too much at once. We've fo
 
 * **Don't test a live app. Use mocking to make your components reliable instead.** If you hit your live app, failures in any number of places could trigger false failures in your UI tests. Instead of hitting a real URL in your app, **create a dedicated test URL** for Huxley to hit that uses mocking (and perhaps dependency injection) to isolate your UI component as much as possible. Huxley is completely unopinionated; use whatever tools you want to do this.
 * **Test a small unit of functionality.** You should try to isolate your UI into modular components and test each one individually. Additionally, try to test one interaction per Huxley test so that when it fails, it's easy to tell exactly which interaction is problematic and it's faster to re-run it.
+
+## FAQ
+
+### Why does Huxley stop recording when I navigate away from the page?
+
+Huxley is designed for testing JavaScript UI components at this time. We've found that you can test multiple pages by creating a new Huxley test for each URL. This is valuable even if you don't use the interactive features of Huxley because it will ensure your static pages stay pixel perfect.
+
+### Why is it called Huxley?
+
+Lots of test frameworks and methodologies are very opinionated about how your code should be structured or how you should write tests. Some tools are so opinionated that they're almost religious about their view of testing! We wanted a tool that got out of our way and let us fight regressions as quickly and easily as possible without being opinionated about it. So we named it after the guy who coined the term "agnostic", [Thomas Henry Huxley](http://en.wikipedia.org/wiki/Thomas_Henry_Huxley).
+
+### Why would you use this instead of unit testing?
+
+First of all, if you sufficiently componentize your UI, Huxley can be used as a unit testing tool.
+
+With that said, unit tests have two shortcomings today.
+
+* **They usually take a long time to write.** Instagram on the web had a single engineer and a designer working on a ton of things in parallel, and we didn't have time to write beautifully isolated tests with elegant dependency injection and comprehensive assertions. We just had to make sure that we didn't cause bugs when we were frantically shipping code. A lot of small web teams can probably identify with this.
+* **They do not test the look of the UI.** Huxley does pixel-by-pixel comparisons of the UI. Traditional UI test systems inspect the DOM but do not look at how it actually renders. We once had a bug where a CSS rule made the height of all image components 0px; without a pixel-by-pixel comparison it's unlikely we would have ever written an explicit test for this.
+
+### What's the best way to use Huxley?
+
+Use it however you want! But we generally shell out to it from within an existing test runner (i.e. Django or Rails). This lets us programmatically start a test server for Huxley to hit.
