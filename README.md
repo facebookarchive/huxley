@@ -28,6 +28,64 @@ When screenshots have changed, those screenshot changes will show up in your com
 
 By default, Huxley will overwrite the old screenshots with new ones. That means you don't have to rewrite anything when your UI changes like you would with a traditional WebDriver test -- Huxley will just take a new screenshot for you and when it's checked in your test is updated!
 
-## Getting started
+## Tutorial
 
-See `example/` for an example. Note: you should be running selenium-server on localhost as well as run `python -m SimpleHTTPServer` from `example/` for it to work out-of-the-box. Then just run `python example.py` to run Huxley.
+In `example/` you'll find a simple completed Huxley test. To start fram scratch, simply remove `toggle.huxley` and `Huxleyfile`.
+
+### Motivation
+
+In `example/webroot/toggle.html` you'll find a very simple JavaScript application that implements a toggle button. The goal of Huxley is to make creating an integration for this component effortless, and to make it easy to update the test when the UI changes.
+
+### Step 1: host your app somewhere
+
+For our example, simply `cd` to `example/webroot` and run `python -m SimpleHTTPServer` to start a basic server for our demo. In your app you may need to start up whatever framework you're using.
+
+### Step 2: create a Huxleyfile
+
+A Huxleyfile describes your test. Create one that looks like this:
+
+```
+[toggle]
+url=http://localhost:8000/toggle.html
+```
+
+This creates a test named `toggle` that tests the URL `http://localhost:8000/toggle.html`.
+
+### Step 2: record the test
+
+Huxley makes writing tests easy because it simply records your browser session -- specifically mouse clicks and key presses on a single page -- and can replay them in an automated way. To do this you need to install [Selenium Server](http://docs.seleniumhq.org/download/) and start it. It's as easy as `java -jar selenium-server-standalone-XXX.jar`.
+
+Then, run Huxley in record mode: `huxley --record`. Huxley will bring up a browser using Selenium. Press enter in the Huxley console to take a screen shot of the initial page load. Then toggle the button in the browser a few times. After every click, switch back to the Huxley console to take a screen shot. When you've tested all of the functionality you want to test, simply type `q` and then enter in the Huxley console to exit.
+
+After confirming, Huxley will automatically record the test for you and save it to disk as `toggle.huxley`. Be sure to commit the `Huxleyfile` as well as `toggle.huxley` into your repository so you can track changes to them.
+
+### Step 3: playback
+
+Simply run the `huxley` command in the same directory as the `Huxleyfile` to be sure that your app still works.
+
+### Step 4: update the test with new screen shots
+
+You'll likely update the UI of the component a lot without changing its core functionality. Huxley can take new screen shots for you when this happens. Tweak the UI of the component in `toggle.html` somehow (maybe change the button color or something) and re-run `huxley`. It will warn you that the UI has changed and will automatically write new screen shots for you. If you run `huxley` again, the test will pass since the screen shots were updated.
+
+The best part is, since the screen shots are checked into the repository, you can review the changes to the UI as part of the code review process if you'd like. At Instagram we have frontend engineers reviewing the JavaScript and designers reviewing the screenshots to ensure that they're pixel perfect.
+
+### Step 5: run in CI mode
+
+If you're using a continuous integration solution like [Jenkins](http://jenkins-ci.org/) you probably don't want to automatically rerecord screen shots on failure. Simply run `huxley --playback-only` to do this.
+
+Additionally, you may find that you're dissatisfied with Huxley replaying your browsing session in real-time. You can speed it up (or slow it down) by editing your `Huxleyfile` to read:
+
+```
+[toggle]
+url=http://localhost:8000/toggle.html
+sleepfactor=0.5
+```
+
+This edit should cut the execution time in half.
+
+## Best practices
+
+Integration tests sometimes get a bad rap for testing too much at once. We've found that if you use integration tests correctly they can be just as effective and accurate as unit tests. Simply follow a few best practices:
+
+* **Don't test a live app. Use mocking to make your components reliable instead.** If you hit your live app, failures in any number of places could trigger false failures in your UI tests. Instead of hitting a real URL in your app, **create a dedicated test URL** for Huxley to hit that uses mocking (and perhaps dependency injection) to isolate your UI component as much as possible. Huxley is completely unopinionated; use whatever tools you want to do this.
+* **Test a small unit of functionality.** You should try to isolate your UI into modular components and test each one individually. Additionally, try to test one interaction per Huxley test so that when it fails, it's easy to tell exactly which interaction is problematic and it's faster to re-run it.
