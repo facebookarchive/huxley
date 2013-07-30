@@ -8,7 +8,7 @@ Huxley is a test-like system for catching **visual regressions** in Web applicat
 
 * UI tests are hard to write and are usually fragile.
 * Automated testing can't tell you if something doesn't look right, so UI regressions may go undetected.
-* Designers can't participate in the code review process even though reviewing the way the UI looks is just as important as reviewing the code that creates it.
+* It can be difficult for designers to participate in the code review process even though reviewing the way the UI looks is just as important as reviewing the code that creates it.
 
 ## How does Huxley help me?
 
