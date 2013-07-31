@@ -28,6 +28,10 @@ When screenshots have changed, those screenshot changes will show up in your com
 
 By default, Huxley will overwrite the old screenshots with new ones. That means you don't have to rewrite anything when your UI changes like you would with a traditional WebDriver test -- Huxley will just take a new screenshot for you and when it's checked in your test is updated!
 
+## Installation
+
+`pip install huxley`
+
 ## Tutorial
 
 In `example/` you'll find a simple completed Huxley test. To start fram scratch, simply remove `toggle.huxley` and `Huxleyfile`.
