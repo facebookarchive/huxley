@@ -116,3 +116,5 @@ With that said, unit tests have two shortcomings today.
 ### What's the best way to use Huxley?
 
 Use it however you want! But we generally shell out to it from within an existing test runner (i.e. Django or Rails). This lets us programmatically start a test server for Huxley to hit.
+
+If you're using Python, you can use Huxley directly in a test (see `huxley.integration.HuxleyTestCase`) or browse the source to see its core APIs.
