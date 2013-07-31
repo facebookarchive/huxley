@@ -1,5 +1,10 @@
 *~
 Huxley.egg-info
+*.egg
+*.sublime-workspace
+.*.swp
 *.pyc
+venv
+.venv
 build/
 dist/
