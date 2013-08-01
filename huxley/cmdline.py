@@ -49,13 +49,15 @@ REMOTE_WEBDRIVER_URL = os.environ.get('HUXLEY_WEBDRIVER_REMOTE', 'http://localho
         'Don\'t write new screenshots',
         'flag',
         'p'
-    )
+    ),
+    save_diff=plac.Annotation('Save information about failures as last.png and diff.png', 'flag', 'e')
 )
 def _main(
     names=None,
     testfile='Huxleyfile',
     record=False,
-    playback_only=False
+    playback_only=False,
+    save_diff=False
 ):
     testfiles = glob.glob(testfile)
     if len(testfiles) == 0:
@@ -111,7 +113,8 @@ def _main(
                     postdata,
                     remote=REMOTE_WEBDRIVER_URL,
                     sleepfactor=sleepfactor,
-                    autorerecord=not playback_only
+                    autorerecord=not playback_only,
+                    save_diff=save_diff
                 )
             new_screenshots = new_screenshots or (r != 0)
             print
