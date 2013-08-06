@@ -112,6 +112,10 @@ def _main(
             postdata = test_config.get(
                 'postdata'
             )
+            screensize = test_config.get(
+                'screensize',
+                '1024x768'
+            )
             if record:
                 r = huxleymain(
                     url,
@@ -119,7 +123,8 @@ def _main(
                     postdata,
                     local=LOCAL_WEBDRIVER_URL,
                     remote=REMOTE_WEBDRIVER_URL,
-                    record=True
+                    record=True,
+                    screensize=screensize
                 )
             else:
                 r = huxleymain(
@@ -129,7 +134,8 @@ def _main(
                     remote=REMOTE_WEBDRIVER_URL,
                     sleepfactor=sleepfactor,
                     autorerecord=not playback_only,
-                    save_diff=save_diff
+                    save_diff=save_diff,
+                    screensize=screensize
                 )
             new_screenshots = new_screenshots or (r != 0)
             print

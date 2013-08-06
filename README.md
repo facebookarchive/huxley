@@ -94,7 +94,7 @@ Integration tests sometimes get a bad rap for testing too much at once. We've fo
 * **Don't test a live app. Use mocking to make your components reliable instead.** If you hit your live app, failures in any number of places could trigger false failures in your UI tests. Instead of hitting a real URL in your app, **create a dedicated test URL** for Huxley to hit that uses mocking (and perhaps dependency injection) to isolate your UI component as much as possible. Huxley is completely unopinionated; use whatever tools you want to do this.
 * **Test a small unit of functionality.** You should try to isolate your UI into modular components and test each one individually. Additionally, try to test one interaction per Huxley test so that when it fails, it's easy to tell exactly which interaction is problematic and it's faster to re-run it.
 
-## FAQ
+## Techincal FAQ
 
 ### Why does Huxley stop recording when I navigate away from the page?
 
@@ -104,9 +104,15 @@ Huxley is designed for testing JavaScript UI components at this time. We've foun
 
 It's usually best if you use an image comparison tool like [Kaleidoscope](http://www.kaleidoscopeapp.com/) to tell what changed. But Huxley includes a simple image diff tool; simply run `huxley` with the `--save-diff` option to output a `diff.png` which will show you the pixels that changed.
 
-### Why is it called Huxley?
+### How do I use a remote webdriver server?
 
-Lots of test frameworks and methodologies are very opinionated about how your code should be structured or how you should write tests. Some tools are so opinionated that they're almost religious about their view of testing! We wanted a tool that got out of our way and let us fight regressions as quickly and easily as possible without being opinionated about it. So we named it after the guy who coined the term "agnostic", [Thomas Henry Huxley](http://en.wikipedia.org/wiki/Thomas_Henry_Huxley).
+You can set the `HUXLEY_WEBDRIVER_LOCAL` environment variable to tell Huxley which webdriver URL to use for `--record` mode. You can set the `HUXLEY_WEBDRIVER_REMOTE` environment variable to tell Huxley which webdriver URL to use for screenshots and playback. Usually you only need to use this when working in a team setting such that everyone's screenshots are taken on the same machine configuration (otherwise they'll change depending on who ran them last).
+
+## Can I test responsive design?
+
+Of course! Simply add a `screensize` setting to your `Huxleyfile`. The default is `screensize=1024x768`.
+
+## Philosophical FAQ
 
 ### Why would you use this instead of unit testing?
 
@@ -122,3 +128,9 @@ With that said, unit tests have two shortcomings today.
 Use it however you want! But we generally shell out to it from within an existing test runner (i.e. Django or Rails). This lets us programmatically start a test server for Huxley to hit.
 
 If you're using Python, you can use Huxley directly in a test (see `huxley.integration.HuxleyTestCase`) or browse the source to see its core APIs.
+
+If you're on a team I recommend setting up webdriver on a shared server and changing the `HUXLEY_WEBDRIVER_REMOTE` environment variable such that everyone's screenshots are pixel perfect (see the technical FAQ above).
+
+### Why is it called Huxley?
+
+Lots of test frameworks and methodologies are very opinionated about how your code should be structured or how you should write tests. Some tools are so opinionated that they're almost religious about their view of testing! We wanted a tool that got out of our way and let us fight regressions as quickly and easily as possible without being opinionated about it. So we named it after the guy who coined the term "agnostic", [Thomas Henry Huxley](http://en.wikipedia.org/wiki/Thomas_Henry_Huxley).
