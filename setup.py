@@ -1,3 +1,4 @@
+import huxley
 from setuptools import setup, find_packages
 import os
 
@@ -5,9 +6,15 @@ DIRNAME = os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name = 'Huxley',
-    version = '0.1',
+    version = huxley.__version__,
     packages = find_packages(),
-    install_requires = open(os.path.join(DIRNAME, 'requirements.txt'), 'r').readlines(),
+    install_requires = [
+        'selenium==2.32.0',
+        'plac==0.9.1',
+        'PIL==1.1.7',
+        'jsonpickle==0.4.0'
+    ],
+    package_data={'': ['requirements.txt']},
     entry_points = {
         'console_scripts': [
             'huxley=huxley.cmdline:main'

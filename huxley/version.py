@@ -12,8 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from huxley.integration import HuxleyTestCase, unittest_main
-from huxley.main import main
-from huxley.version import __version__
-
-__all__ = ['HuxleyTestCase', 'unittest_main', 'main']
+__version__ = '0.3'

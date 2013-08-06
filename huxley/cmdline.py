@@ -20,6 +20,7 @@ import sys
 import plac
 
 from huxley.main import main as huxleymain
+from huxley.version import __version__
 
 class ExitCodes(object):
     OK = 0
@@ -50,15 +51,29 @@ REMOTE_WEBDRIVER_URL = os.environ.get('HUXLEY_WEBDRIVER_REMOTE', 'http://localho
         'flag',
         'p'
     ),
-    save_diff=plac.Annotation('Save information about failures as last.png and diff.png', 'flag', 'e')
+    save_diff=plac.Annotation(
+        'Save information about failures as last.png and diff.png',
+        'flag',
+        'e'
+    ),
+    version=plac.Annotation(
+        'Get the current version',
+        'flag',
+        'v'
+    )
 )
 def _main(
     names=None,
     testfile='Huxleyfile',
     record=False,
     playback_only=False,
-    save_diff=False
+    save_diff=False,
+    version=False
 ):
+    if version:
+        print 'Huxley ' + __version__
+        return ExitCodes.OK
+
     testfiles = glob.glob(testfile)
     if len(testfiles) == 0:
         print 'no Huxleyfile found'

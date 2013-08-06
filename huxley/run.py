@@ -18,6 +18,7 @@ import os
 import time
 
 from huxley.consts import TestRunModes
+from huxley.errors import TestError
 from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep
 
 def get_post_js(url, postdata):
@@ -124,7 +125,13 @@ window._getHuxleyEvents = function() { return events; };
             print len(steps), 'screenshots taken'
 
         # now capture the events
-        events = d.execute_script('return window._getHuxleyEvents();')
+        try:
+            events = d.execute_script('return window._getHuxleyEvents();')
+        except:
+            raise TestError(
+                'Could not call window._getHuxleyEvents(). ' +
+                'This usually means you navigated to a new page, which is currently unsupported.'
+            )
         for (timestamp, type, params) in events:
             if type == 'click':
                 steps.append(ClickTestStep(timestamp - start_time, params))
