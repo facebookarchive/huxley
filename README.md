@@ -100,6 +100,10 @@ Integration tests sometimes get a bad rap for testing too much at once. We've fo
 
 Huxley is designed for testing JavaScript UI components at this time. We've found that you can test multiple pages by creating a new Huxley test for each URL. This is valuable even if you don't use the interactive features of Huxley because it will ensure your static pages stay pixel perfect.
 
+### I can't tell what changed!
+
+It's usually best if you use an image comparison tool like [Kaleidoscope](http://www.kaleidoscopeapp.com/) to tell what changed. But Huxley includes a simple image diff tool; simply run `huxley` with the `--save-diff` option to output a `diff.png` which will show you the pixels that changed.
+
 ### Why is it called Huxley?
 
 Lots of test frameworks and methodologies are very opinionated about how your code should be structured or how you should write tests. Some tools are so opinionated that they're almost religious about their view of testing! We wanted a tool that got out of our way and let us fight regressions as quickly and easily as possible without being opinionated about it. So we named it after the guy who coined the term "agnostic", [Thomas Henry Huxley](http://en.wikipedia.org/wiki/Thomas_Henry_Huxley).
