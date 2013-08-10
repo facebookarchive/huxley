@@ -18,7 +18,7 @@ import os
 import time
 
 from huxley.consts import TestRunModes
-from huxley.errors import TestError
+#from huxley.errors import TestError
 from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep
 
 def get_post_js(url, postdata):
@@ -57,6 +57,8 @@ class Test(object):
 
 
 class TestRun(object):
+    events = []
+
     def __init__(self, test, path, url, d, mode, diffcolor, save_diff):
         if not isinstance(test, Test):
             raise ValueError('You must provide a Test instance')
@@ -106,16 +108,11 @@ class TestRun(object):
         run = TestRun(test, path, url, d, TestRunModes.RECORD, diffcolor, save_diff)
         d.set_window_size(*screen_size)
         navigate(d, url)
-        start_time = d.execute_script('return +new Date();')
-        d.execute_script('''
-(function() {
-var events = [];
-window.addEventListener('click', function (e) { events.push([+new Date(), 'click', [e.clientX, e.clientY]]); }, true);
-window.addEventListener('keyup', function (e) { events.push([+new Date(), 'keyup', String.fromCharCode(e.keyCode)]); }, true);
-window._getHuxleyEvents = function() { return events; };
-})();
-''')
+        start_time = d.execute_script('return Date.now();')
+        cls.get_events(d)
         steps = []
+        rt = RepeatedTimer(1, cls.get_events, d) # capture events every second
+
         while True:
             if len(raw_input("Press enter to take a screenshot, or type Q+enter if you're done\n")) > 0:
                 break
@@ -124,15 +121,12 @@ window._getHuxleyEvents = function() { return events; };
             steps.append(screenshot_step)
             print len(steps), 'screenshots taken'
 
-        # now capture the events
-        try:
-            events = d.execute_script('return window._getHuxleyEvents();')
-        except:
-            raise TestError(
-                'Could not call window._getHuxleyEvents(). ' +
-                'This usually means you navigated to a new page, which is currently unsupported.'
-            )
-        for (timestamp, type, params) in events:
+        # capture the remaining events
+        rt.stop()
+        cls.get_events(d)
+
+
+        for (timestamp, type, params) in TestRun.events:
             if type == 'click':
                 steps.append(ClickTestStep(timestamp - start_time, params))
             elif type == 'keyup':
@@ -152,4 +146,55 @@ window._getHuxleyEvents = function() { return events; };
         cls.rerecord(test, path, url, remote_d, sleepfactor, diffcolor, save_diff)
 
         return test
+
+    @classmethod
+    def get_events(cls, d):
+        try:
+            new_events = d.execute_script('''
+                return (function() {
+                    if(typeof window._huxleyEvents == "undefined") {
+                        window._huxleyEvents = JSON.parse(sessionStorage.getItem('_huxleyEvents') || '[]');
+                        window.addEventListener('click', function (e) {window._huxleyEvents.push([Date.now(), 'click', [e.clientX, e.clientY]]); }, true);
+                        window.addEventListener('keyup', function (e) {window._huxleyEvents.push([Date.now(), 'keyup', String.fromCharCode(e.keyCode)]); }, true);
+                        window.onunload = function() {sessionStorage.setItem('_huxleyEvents', JSON.stringify(window._huxleyEvents)) }
+                    }
+
+                    return window._huxleyEvents.splice(0, window._huxleyEvents.length)
+                })();
+                ''')
+            print new_events
+            TestRun.events.extend(new_events)
+        except:
+            print "Couldn't get events, not sure why, this might not be a problem."
+            # raise TestError(
+            #     'Couldn\'t get events from the browser.' +
+            #     'Not sure why.'
+            # )
+
+from threading import Timer
+
+class RepeatedTimer(object):
+    def __init__(self, interval, function, *args, **kwargs):
+        self._timer     = None
+        self.interval   = interval
+        self.function   = function
+        self.args       = args
+        self.kwargs     = kwargs
+        self.is_running = False
+        self.start()
+
+    def _run(self):
+        self.is_running = False
+        self.start()
+        self.function(*self.args, **self.kwargs)
+
+    def start(self):
+        if not self.is_running:
+            self._timer = Timer(self.interval, self._run)
+            self._timer.start()
+            self.is_running = True
+
+    def stop(self):
+        self._timer.cancel()
+        self.is_running = False
 
