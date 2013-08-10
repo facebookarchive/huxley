@@ -14,6 +14,7 @@
 
 import ConfigParser
 import glob
+import json
 import os
 import sys
 
@@ -29,6 +30,7 @@ class ExitCodes(object):
 
 LOCAL_WEBDRIVER_URL = os.environ.get('HUXLEY_WEBDRIVER_LOCAL', 'http://localhost:4444/wd/hub')
 REMOTE_WEBDRIVER_URL = os.environ.get('HUXLEY_WEBDRIVER_REMOTE', 'http://localhost:4444/wd/hub')
+DEFAULTS = json.loads(os.environ.get('HUXLEY_DEFAULTS', 'null'))
 
 @plac.annotations(
     names=plac.Annotation(
@@ -87,7 +89,8 @@ def _main(
         print msg
         print '-' * len(msg)
 
-        config = ConfigParser.RawConfigParser(
+        config = ConfigParser.SafeConfigParser(
+            defaults=DEFAULTS,
             allow_no_value=True
         )
         config.read([file])
