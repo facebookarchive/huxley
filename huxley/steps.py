@@ -35,14 +35,10 @@ class ClickTestStep(TestStep):
 
     def execute(self, run):
         print '  Clicking', self.pos
-        # Work around a bug in ActionChains.move_by_offset()
-        id = run.d.execute_script('return document.elementFromPoint(%d, %d).id;' % tuple(self.pos))
-        if id is None or id == '':
-            run.d.execute_script(
-                'document.elementFromPoint(%d, %d).id = %r;' % (self.pos[0], self.pos[1], self.CLICK_ID)
-            )
-            id = self.CLICK_ID
-        run.d.execute_script('document.getElementById(%r).click();' % str(id))
+        # Work around multiple bugs in WebDriver's implementation of click()
+        run.d.execute_script(
+            'document.elementFromPoint(%d, %d).click();' % (self.pos[0], self.pos[1])
+        )
 
 
 class KeyTestStep(TestStep):
