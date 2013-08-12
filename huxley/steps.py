@@ -42,7 +42,7 @@ class ClickTestStep(TestStep):
                 'document.elementFromPoint(%d, %d).id = %r;' % (self.pos[0], self.pos[1], self.CLICK_ID)
             )
             id = self.CLICK_ID
-        run.d.find_element_by_id(id).click()
+        run.d.execute_script('document.getElementById(%r).click();' % str(id))
 
 
 class KeyTestStep(TestStep):
