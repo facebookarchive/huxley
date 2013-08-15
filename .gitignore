@@ -1,5 +1,5 @@
 *~
-Huxley.egg-info
+*.egg-info
 *.egg
 *.sublime-workspace
 .*.swp
