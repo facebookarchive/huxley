@@ -1,12 +1,13 @@
-import huxley
 from setuptools import setup, find_packages
 import os
 
 DIRNAME = os.path.dirname(os.path.abspath(__file__))
 
+execfile(os.path.join(DIRNAME, 'huxley', 'version.py'))
+
 setup(
     name = 'Huxley',
-    version = huxley.__version__,
+    version = __version__,
     packages = find_packages(),
     install_requires = [
         'selenium==2.32.0',
