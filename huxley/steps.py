@@ -34,11 +34,21 @@ class ClickTestStep(TestStep):
         self.pos = pos
 
     def execute(self, run):
-        print '  Clicking', self.pos
+        pos = self.pos
+        print '  Clicking', pos
         # Work around multiple bugs in WebDriver's implementation of click()
-        run.d.execute_script(
-            'document.elementFromPoint(%d, %d).click();' % (self.pos[0], self.pos[1])
+        elementClicked = run.d.execute_script(
+            'return document.elementFromPoint(%d, %d);' % (pos[0], pos[1])
         )
+        run.d.execute_script(
+            'document.elementFromPoint(%d, %d).click();' % (pos[0], pos[1])
+        )
+        # If clicking on an input, focus it
+        if elementClicked.tag_name == 'input' or elementClicked.tag_name == 'textarea':
+            run.d.execute_script(
+                'document.elementFromPoint(%d, %d).focus();' % (pos[0], pos[1])
+            )
+
 
 
 class KeyTestStep(TestStep):
