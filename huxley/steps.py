@@ -44,9 +44,16 @@ class ClickTestStep(TestStep):
             'document.elementFromPoint(%d, %d).click();' % (pos[0], pos[1])
         )
         # If clicking on an input, focus it
-        if elementClicked.tag_name == 'input' or elementClicked.tag_name == 'textarea':
+        if (elementClicked.tag_name == 'input' or
+            elementClicked.tag_name == 'textarea' or
+            elementClicked.tag_name == 'select'):
             run.d.execute_script(
                 'document.elementFromPoint(%d, %d).focus();' % (pos[0], pos[1])
+            )
+        else:
+            # unfocus to prevent accidental keypress into a random field
+            run.d.execute_script(
+                'document.activeElement.blur();'
             )
 
 
@@ -60,13 +67,11 @@ class KeyTestStep(TestStep):
 
     def execute(self, run):
         print '  Typing', self.key
-        id = run.d.execute_script('return document.activeElement.id;')
-        if id is None or id == '':
-            run.d.execute_script(
-                'document.activeElement.id = %r;' % self.KEY_ID
-            )
-            id = self.KEY_ID
-        run.d.find_element_by_id(id).send_keys(self.key.lower())
+        activeElement = run.d.execute_script(
+            'return document.activeElement;'
+        )
+        if activeElement is not None:
+            activeElement.send_keys(self.key.lower())
 
 
 class ScreenshotTestStep(TestStep):
