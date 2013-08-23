@@ -119,6 +119,10 @@ def _main(
                 'screensize',
                 '1024x768'
             )
+            browser = test_config.get(
+                'browser',
+                'firefox'
+            )
             if record:
                 r = huxleymain(
                     url,
@@ -127,7 +131,8 @@ def _main(
                     local=LOCAL_WEBDRIVER_URL,
                     remote=REMOTE_WEBDRIVER_URL,
                     record=True,
-                    screensize=screensize
+                    screensize=screensize,
+                    browser=browser
                 )
             else:
                 r = huxleymain(
@@ -138,7 +143,8 @@ def _main(
                     sleepfactor=sleepfactor,
                     autorerecord=not playback_only,
                     save_diff=save_diff,
-                    screensize=screensize
+                    screensize=screensize,
+                    browser=browser
                 )
             new_screenshots = new_screenshots or (r != 0)
             print
