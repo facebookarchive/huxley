@@ -94,7 +94,7 @@ Integration tests sometimes get a bad rap for testing too much at once. We've fo
 * **Don't test a live app. Use mocking to make your components reliable instead.** If you hit your live app, failures in any number of places could trigger false failures in your UI tests. Instead of hitting a real URL in your app, **create a dedicated test URL** for Huxley to hit that uses mocking (and perhaps dependency injection) to isolate your UI component as much as possible. Huxley is completely unopinionated; use whatever tools you want to do this.
 * **Test a small unit of functionality.** You should try to isolate your UI into modular components and test each one individually. Additionally, try to test one interaction per Huxley test so that when it fails, it's easy to tell exactly which interaction is problematic and it's faster to re-run it.
 
-## Techincal FAQ
+## Technical FAQ
 
 ### Why does Huxley stop recording when I navigate away from the page?
 
@@ -112,11 +112,12 @@ You can set the `HUXLEY_WEBDRIVER_LOCAL` environment variable to tell Huxley whi
 
 You can add a `browser` setting to your `Huxleyfile`(valid values: chrome,firefox,ie,opera). The default is `firefox`.
 Just make sure you have appropriate webdriver installed and available in PATH.
-## Philosophical FAQ
 
 ## Can I test responsive design?
 
 Of course! Simply add a `screensize` setting to your `Huxleyfile`. The default is `screensize=1024x768`.
+
+## Philosophical FAQ
 
 ### Why would you use this instead of unit testing?
 
