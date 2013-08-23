@@ -108,11 +108,15 @@ It's usually best if you use an image comparison tool like [Kaleidoscope](http:/
 
 You can set the `HUXLEY_WEBDRIVER_LOCAL` environment variable to tell Huxley which webdriver URL to use for `--record` mode. You can set the `HUXLEY_WEBDRIVER_REMOTE` environment variable to tell Huxley which webdriver URL to use for screenshots and playback. Usually you only need to use this when working in a team setting such that everyone's screenshots are taken on the same machine configuration (otherwise they'll change depending on who ran them last).
 
+### How do I run test on a different browser than firefox?
+
+You can add a `browser` setting to your `Huxleyfile`(valid values: chrome,firefox,ie,opera). The default is `firefox`.
+Just make sure you have appropriate webdriver installed and available in PATH.
+## Philosophical FAQ
+
 ## Can I test responsive design?
 
 Of course! Simply add a `screensize` setting to your `Huxleyfile`. The default is `screensize=1024x768`.
-
-## Philosophical FAQ
 
 ### Why would you use this instead of unit testing?
 
