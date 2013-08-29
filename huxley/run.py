@@ -57,7 +57,7 @@ class Test(object):
 
 
 class TestRun(object):
-    def __init__(self, test, path, url, d, mode, diffcolor, save_diff):
+    def __init__(self, test, path, url, d, mode, diffcolor, save_diff, his_mode):
         if not isinstance(test, Test):
             raise ValueError('You must provide a Test instance')
         self.test = test
@@ -67,21 +67,28 @@ class TestRun(object):
         self.mode = mode
         self.diffcolor = diffcolor
         self.save_diff = save_diff
+        self.his_mode = his_mode
 
     @classmethod
-    def rerecord(cls, test, path, url, d, sleepfactor, diffcolor, save_diff):
+    def rerecord(cls, test, path, url, d, sleepfactor, diffcolor, save_diff, his_mode=False):
         print 'Begin rerecord'
-        run = TestRun(test, path, url, d, TestRunModes.RERECORD, diffcolor, save_diff)
+        run_mode = TestRunModes.RERECORD
+        if his_mode:
+            run_mode |= TestRunModes.HISRECORD
+        run = TestRun(test, path, url, d, run_mode, diffcolor, save_diff, his_mode)
         run._playback(sleepfactor)
         print
         print 'Playing back to ensure the test is correct'
         print
-        cls.playback(test, path, url, d, sleepfactor, diffcolor, save_diff)
+        cls.playback(test, path, url, d, sleepfactor, diffcolor, save_diff, his_mode)
 
     @classmethod
-    def playback(cls, test, path, url, d, sleepfactor, diffcolor, save_diff):
+    def playback(cls, test, path, url, d, sleepfactor, diffcolor, save_diff, his_mode=False):
         print 'Begin playback'
-        run = TestRun(test, path, url, d, TestRunModes.PLAYBACK, diffcolor, save_diff)
+        run_mode = TestRunModes.PLAYBACK
+        if his_mode:
+            run_mode |= TestRunModes.HISRECORD
+        run = TestRun(test, path, url, d, run_mode, diffcolor, save_diff, his_mode)
         run._playback(sleepfactor)
 
     def _playback(self, sleepfactor):
@@ -96,14 +103,13 @@ class TestRun(object):
             last_offset_time = step.offset_time
 
     @classmethod
-    def record(cls, d, remote_d, url, screen_size, path, diffcolor, sleepfactor, save_diff):
+    def record(cls, d, remote_d, url, screen_size, path, diffcolor, sleepfactor, save_diff, his_mode=False):
         print 'Begin record'
-        try:
+        if not os.path.exists(path):
             os.makedirs(path)
-        except:
-            pass
+
         test = Test(screen_size)
-        run = TestRun(test, path, url, d, TestRunModes.RECORD, diffcolor, save_diff)
+        run = TestRun(test, path, url, d, TestRunModes.RECORD, diffcolor, save_diff, his_mode)
         d.set_window_size(*screen_size)
         navigate(d, url)
         start_time = d.execute_script('return Date.now();')
@@ -120,7 +126,12 @@ window._getHuxleyEvents = function() { return events; };
             if len(raw_input("Press enter to take a screenshot, or type Q+enter if you're done\n")) > 0:
                 break
             screenshot_step = ScreenshotTestStep(d.execute_script('return Date.now();') - start_time, run, len(steps))
-            run.d.save_screenshot(screenshot_step.get_path(run))
+            if his_mode:
+                screenshot_step.create_run_path(run)
+                run.d.save_screenshot(screenshot_step.get_latest_path(run))
+            else:
+                run.d.save_screenshot(screenshot_step.get_path(run))
+
             steps.append(screenshot_step)
             print len(steps), 'screenshots taken'
 
@@ -149,7 +160,7 @@ window._getHuxleyEvents = function() { return events; };
             'Press enter to start.'
         )
         print
-        cls.rerecord(test, path, url, remote_d, sleepfactor, diffcolor, save_diff)
+        cls.rerecord(test, path, url, remote_d, sleepfactor, diffcolor, save_diff, his_mode)
 
         return test
 

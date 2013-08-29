@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import os
+import re
+import time
+from datetime import datetime
 
-from huxley.consts import TestRunModes
+from huxley.consts import TestRunModes, TestRunStartTime
 from huxley.errors import TestError
 from huxley.images import images_identical, image_diff
 
@@ -67,18 +70,65 @@ class ScreenshotTestStep(TestStep):
     def get_path(self, run):
         return os.path.join(run.path, 'screenshot' + str(self.index) + '.png')
 
+    def get_latest_path(self, run, run_time=None):
+        """
+            get latest path by run_time, if has none, return None.Support for history record mode
+
+            for exp:
+                          run_time                  run_time_path              latest_dir
+            (first_run)   2013/01/01 10:00:00 ==>   run.path/20130101100000    run.path/None
+            (second_run)  2013/01/02 10:00:00 ==>   run.path/20130102100000    run.path/20130101000000
+            (third_run)   2013/01/03 10:00:00 ==>   run.path/20130103100000    run.path/20130102000000
+            ...
+
+            and after `third_run`, you call:
+                ScreenshotTestStep().get_latest_path(run, datetime.strftime('%Y%m%d%H%M%S', '20130102110000'))
+                you will get run.path/20130102100000/screenshot1.png
+        """
+        if not run_time:
+            run_time = TestRunStartTime.get_start_time()
+        history_run_folders_time = [
+                datetime.strptime(item, '%Y%m%d%H%M%S') for item in os.listdir(run.path) if re.match('\d+', item)]
+        history_run_folders_time = [item for item in history_run_folders_time if item]
+
+        if not history_run_folders_time:
+            return None
+        latest_dir_time = history_run_folders_time[
+            history_run_folders_time.index(min(history_run_folders_time, key=lambda x:(run_time-x).seconds))]
+
+        return os.path.join(run.path, latest_dir_time.strftime('%Y%m%d%H%M%S'), 'screenshot' + str(self.index) + '.png')
+
+    def create_run_path(self, run, run_time=None):
+        """mkdir run_time, for history record mode, please refer to get_latest_path"""
+        if not run_time:
+            run_time = TestRunStartTime.get_start_time()
+        run_dir_path = os.path.join(run.path, run_time.strftime('%Y%m%d%H%M%S'))
+        if not os.path.exists(run_dir_path):
+            os.makedirs(run_dir_path)
+        return run_dir_path
+
     def execute(self, run):
         print '  Taking screenshot', self.index
-        original = self.get_path(run)
-        new = os.path.join(run.path, 'last.png')
-        if run.mode == TestRunModes.RERECORD:
+        if run.mode & TestRunModes.HISRECORD:
+            run_start_time = TestRunStartTime().get_start_time()
+            original = self.get_latest_path(run, run_start_time)
+            if not original:
+                original = os.path.join(self.create_run_path(run, run_start_time), 'screenshot' + str(self.index) + '.png')
+                new = original
+            else:
+                new = os.path.join(self.create_run_path(run, run_start_time), 'screenshot' + str(self.index) + '.png')
+        else:
+            original = self.get_path(run)
+            new = os.path.join(run.path, 'last.png')
+
+        if run.mode & TestRunModes.RERECORD:
             run.d.save_screenshot(original)
         else:
             run.d.save_screenshot(new)
             try:
                 if not images_identical(original, new):
                     if run.save_diff:
-                        diffpath = os.path.join(run.path, 'diff.png')
+                        diffpath = new.replace('.png', '') + '_diff.png'
                         diff = image_diff(original, new, diffpath, run.diffcolor)
                         raise TestError(
                             ('Screenshot %s was different; compare %s with %s. See %s ' +
@@ -89,5 +139,5 @@ class ScreenshotTestStep(TestStep):
                     else:
                         raise TestError('Screenshot %s was different.' % self.index)
             finally:
-                if not run.save_diff:
+                if (not run.save_diff) and not (run.mode & TestRunModes.HISRECORD):
                     os.unlink(new)

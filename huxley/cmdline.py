@@ -58,6 +58,11 @@ DEFAULTS = json.loads(os.environ.get('HUXLEY_DEFAULTS', 'null'))
         'flag',
         'e'
     ),
+    his_mode=plac.Annotation(
+        'run in history mode, you will get all screenshot png by each time',
+        'flag',
+        'H'
+    ),
     version=plac.Annotation(
         'Get the current version',
         'flag',
@@ -70,6 +75,7 @@ def _main(
     record=False,
     playback_only=False,
     save_diff=False,
+    his_mode=False,
     version=False
 ):
     if version:
@@ -127,6 +133,7 @@ def _main(
                     local=LOCAL_WEBDRIVER_URL,
                     remote=REMOTE_WEBDRIVER_URL,
                     record=True,
+                    his_mode=his_mode,
                     screensize=screensize
                 )
             else:
@@ -138,6 +145,7 @@ def _main(
                     sleepfactor=sleepfactor,
                     autorerecord=not playback_only,
                     save_diff=save_diff,
+                    his_mode=his_mode,
                     screensize=screensize
                 )
             new_screenshots = new_screenshots or (r != 0)
