@@ -44,10 +44,14 @@ def navigate(d, url):
     href, postdata = url
     d.get('about:blank')
     d.refresh()
-    if not postdata:
-        d.get(href)
-    else:
-        d.execute_script(get_post_js(href, postdata))
+    try:
+        from huxley.login import login_handle
+        login_handle(d, href)
+    except ImportError, e:
+        if not postdata:
+            d.get(href)
+        else:
+            d.execute_script(get_post_js(href, postdata))
 
 
 class Test(object):
@@ -95,12 +99,22 @@ class TestRun(object):
         self.d.set_window_size(*self.test.screen_size)
         navigate(self.d, self.url)
         last_offset_time = 0
+        play_errors = []
         for step in self.test.steps:
-            sleep_time = (step.offset_time - last_offset_time) * sleepfactor
-            print '  Sleeping for', sleep_time, 'ms'
-            time.sleep(float(sleep_time) / 1000)
-            step.execute(self)
-            last_offset_time = step.offset_time
+            try:
+                sleep_time = (step.offset_time - last_offset_time) * sleepfactor
+                print '  Sleeping for', sleep_time, 'ms'
+                time.sleep(float(sleep_time) / 1000)
+                step.execute(self)
+                last_offset_time = step.offset_time
+            except TestError,e:
+                play_errors.append({'error':e, 'step':step.index})
+                continue
+        if play_errors:
+            for item in play_errors:
+                print "!!!step %d playback Err" % item['step']
+            raise TestError("%d steps err" % len(play_errors))
+
 
     @classmethod
     def record(cls, d, remote_d, url, screen_size, path, diffcolor, sleepfactor, save_diff, his_mode=False):
