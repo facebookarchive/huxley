@@ -34,15 +34,15 @@ By default, Huxley will overwrite the old screenshots with new ones. That means 
 
 ## Tutorial
 
-In `example/` you'll find a simple completed Huxley test. To start fram scratch, simply remove `toggle.huxley` and `Huxleyfile`.
+In `examples/` you'll find two simple completed Huxley tests. To start from scratch, simply remove `toggle.huxley`, `type.huxley` and `Huxleyfile`.
 
 ### Motivation
 
-In `example/webroot/toggle.html` you'll find a very simple JavaScript application that implements a toggle button. The goal of Huxley is to make creating an integration for this component effortless, and to make it easy to update the test when the UI changes.
+In `examples/webroot/toggle.html` you'll find a very simple JavaScript application that implements a toggle button. The goal of Huxley is to make creating an integration for this component effortless, and to make it easy to update the test when the UI changes.
 
 ### Step 1: host your app somewhere
 
-For our example, simply `cd` to `example/webroot` and run `python -m SimpleHTTPServer` to start a basic server for our demo. In your app you may need to start up whatever framework you're using.
+For our example, simply `cd` to `examples/webroot` and run `python -m SimpleHTTPServer` to start a basic server for our demo. In your app you may need to start up whatever framework you're using.
 
 ### Step 2: create a Huxleyfile
 
