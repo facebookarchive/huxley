@@ -17,7 +17,7 @@ import operator
 import os
 import time
 
-from huxley.consts import TestRunModes
+from huxley.consts import TestRunModes, TestRunStartTime
 from huxley.errors import TestError
 from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep
 
@@ -108,12 +108,10 @@ class TestRun(object):
                 step.execute(self)
                 last_offset_time = step.offset_time
             except TestError,e:
-                play_errors.append({'error':e, 'step':step.index})
+                play_errors.append({'error':e, 'step':step.index, 'timestamp':TestRunStartTime().get_start_time()})
                 continue
         if play_errors:
-            for item in play_errors:
-                print "!!!step %d playback Err" % item['step']
-            raise TestError("%d steps err" % len(play_errors))
+            raise TestError("%d errs" % len(play_errors), play_errors)
 
 
     @classmethod
