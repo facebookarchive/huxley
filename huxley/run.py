@@ -16,6 +16,7 @@ import json
 import operator
 import os
 import time
+from selenium.common.exceptions import UnexpectedAlertPresentException
 
 from huxley.consts import TestRunModes, TestRunStartTime
 from huxley.errors import TestError
@@ -42,8 +43,14 @@ def get_post_js(url, postdata):
 
 def navigate(d, url):
     href, postdata = url
-    d.get('about:blank')
-    d.refresh()
+    try:
+        d.get('about:blank')
+        d.refresh()
+    except UnexpectedAlertPresentException:
+        print "auto accept alert"
+        alert = d.switch_to_alert()
+        alert.accept()
+
     try:
         from huxley.login import login_handle
         login_handle(d, href)
@@ -183,8 +190,6 @@ window._getHuxleyEvents = function() { return events; };
                                                      params))
 
                 del mouse_action_stack[:]
-            import pprint
-            pprint.pprint(mouse_action_stack)
 
         steps.sort(key=operator.attrgetter('offset_time'))
 

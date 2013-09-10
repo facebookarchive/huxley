@@ -20,6 +20,7 @@ import sys
 import jsonpickle
 import plac
 from selenium import webdriver
+from selenium.common.exceptions import UnexpectedAlertPresentException
 
 from huxley.run import TestRun
 from huxley.consts import TestRunStartTime
@@ -101,7 +102,7 @@ def main(
     diffcolor = tuple(int(x) for x in diffcolor.split(','))
     jsonfile = os.path.join(filename, 'record.json')
 
-    with contextlib.closing(d):
+    try:
         if record:
             if local:
                 local_d = webdriver.Remote(local, CAPABILITIES[browser])
@@ -139,6 +140,13 @@ def main(
                 TestRun.playback(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor, save_diff, his_mode)
                 print 'Test played back successfully'
                 return 0
+    finally:
+        try:
+            d.close()
+        except UnexpectedAlertPresentException:
+            print "auto accept alert"
+            alert = d.switch_to_alert()
+            alert.accept()
 
 if __name__ == '__main__':
     sys.exit(plac.call(main))
