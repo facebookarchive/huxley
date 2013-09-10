@@ -17,6 +17,7 @@ import re
 import time
 from datetime import datetime
 from selenium.webdriver import ActionChains
+from selenium.common.exceptions import MoveTargetOutOfBoundsException
 
 from huxley.consts import TestRunModes, TestRunStartTime
 from huxley.errors import TestError
@@ -56,11 +57,15 @@ class DragAndDropTestStep(TestStep):
         print 'Drag and drop', self.mouse_down_pos, self.mouse_up_pos
         # Work around multiple bugs in WebDriver's implementation of drag and drop
         drag_and_drop = ActionChains(run.d)
-        drag_and_drop.move_to_element_with_offset(run.d.find_element_by_xpath('//body'), 0, 0)\
+        try:
+            drag_and_drop.move_to_element_with_offset(run.d.find_element_by_xpath('//body'), 0, 0)\
                     .move_by_offset(self.mouse_down_pos[0], self.mouse_down_pos[1])\
                     .click_and_hold()\
                     .move_by_offset(self.mouse_up_pos[0]-self.mouse_down_pos[0], self.mouse_up_pos[1]-self.mouse_down_pos[1])\
                     .release().perform()
+        except MoveTargetOutOfBoundsException:
+            print 'Error, move target out of bounds'
+
 
 class KeyTestStep(TestStep):
     KEY_ID = '_huxleyKey'
