@@ -22,6 +22,7 @@ import plac
 
 from huxley.main import main as huxleymain
 from huxley.version import __version__
+from huxley.gentestcase import GenTestCase
 
 class ExitCodes(object):
     OK = 0
@@ -40,6 +41,13 @@ DEFAULTS = json.loads(os.environ.get('HUXLEY_DEFAULTS', 'null'))
         'Test file(s) to use',
         'option',
         'f',
+        str,
+        metavar='GLOB'
+    ),
+    testcasename=plac.Annotation(
+        'create testcase',
+        'option',
+        'c',
         str,
         metavar='GLOB'
     ),
@@ -76,11 +84,17 @@ def _main(
     playback_only=False,
     save_diff=False,
     his_mode=False,
-    version=False
+    version=False,
+    testcasename=None
 ):
     if version:
         print 'Huxley ' + __version__
         return ExitCodes.OK
+
+    if testcasename:
+        print 'create testcase %s' % testcasename
+        GenTestCase(testcasename).gen()
+        return
 
     testfiles = glob.glob(testfile)
     if len(testfiles) == 0:
