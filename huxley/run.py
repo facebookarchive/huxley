@@ -19,7 +19,7 @@ import time
 
 from huxley.consts import TestRunModes, TestRunStartTime
 from huxley.errors import TestError
-from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep
+from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep, DragAndDropTestStep
 
 def get_post_js(url, postdata):
     markup = '<form method="post" action="%s">' % url
@@ -129,11 +129,16 @@ class TestRun(object):
 (function() {
 var events = [];
 window.addEventListener('click', function (e) { events.push([Date.now(), 'click', [e.clientX, e.clientY]]); }, true);
+window.addEventListener('mousedown', function (e) { events.push([Date.now(), 'mousedown', [e.clientX, e.clientY]]); }, true);
+window.addEventListener('mouseup', function (e) { events.push([Date.now(), 'mouseup', [e.clientX, e.clientY]]); }, true);
+window.addEventListener('mousemove', function (e) { events.push([Date.now(), 'mousemove', [e.clientX, e.clientY]]); }, true);
 window.addEventListener('keyup', function (e) { events.push([Date.now(), 'keyup', String.fromCharCode(e.keyCode)]); }, true);
 window._getHuxleyEvents = function() { return events; };
 })();
 ''')
         steps = []
+        mouse_action_stack = []
+        drag_and_drop_sub_steps = []
         while True:
             if len(raw_input("Press enter to take a screenshot, or type Q+enter if you're done\n")) > 0:
                 break
@@ -160,6 +165,26 @@ window._getHuxleyEvents = function() { return events; };
                 steps.append(ClickTestStep(timestamp - start_time, params))
             elif type == 'keyup':
                 steps.append(KeyTestStep(timestamp - start_time, params))
+
+            elif type == 'mousedown':
+                del mouse_action_stack[:]
+                mouse_action_stack.append({'action':'mousedown', 'offtime':(timestamp -start_time), 'position':params})
+            elif type == 'mousemove':
+                mouse_actions = [item['action'] for item in mouse_action_stack]
+                if 'mousedown' in mouse_actions:
+                    mouse_action_stack.append({'action':'mousemove', 'offtime':(timestamp -start_time), 'position':params})
+            elif type == 'mouseup':
+                mouse_actions = [item['action'] for item in mouse_action_stack]
+                if 'mousedown' in mouse_actions:
+                    mouse_down_index = mouse_actions.index('mousedown')
+                    if mouse_down_index<len(mouse_action_stack) - 1:
+                        steps.append(DragAndDropTestStep(mouse_action_stack[mouse_down_index]['offtime'],
+                                                     mouse_action_stack[mouse_down_index]['position'],
+                                                     params))
+
+                del mouse_action_stack[:]
+            import pprint
+            pprint.pprint(mouse_action_stack)
 
         steps.sort(key=operator.attrgetter('offset_time'))
 

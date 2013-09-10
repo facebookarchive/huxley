@@ -16,6 +16,7 @@ import os
 import re
 import time
 from datetime import datetime
+from selenium.webdriver import ActionChains
 
 from huxley.consts import TestRunModes, TestRunStartTime
 from huxley.errors import TestError
@@ -43,6 +44,23 @@ class ClickTestStep(TestStep):
             'document.elementFromPoint(%d, %d).click();' % (self.pos[0], self.pos[1])
         )
 
+class DragAndDropTestStep(TestStep):
+    CLICK_ID = '_huxleyDragAndDrop'
+
+    def __init__(self, offset_time, mouse_down_pos, mouse_up_pos):
+        super(DragAndDropTestStep, self).__init__(offset_time)
+        self.mouse_down_pos = mouse_down_pos
+        self.mouse_up_pos = mouse_up_pos
+
+    def execute(self, run):
+        print 'Drag and drop', self.mouse_down_pos, self.mouse_up_pos
+        # Work around multiple bugs in WebDriver's implementation of drag and drop
+        drag_and_drop = ActionChains(run.d)
+        drag_and_drop.move_to_element_with_offset(run.d.find_element_by_xpath('//body'), 0, 0)\
+                    .move_by_offset(self.mouse_down_pos[0], self.mouse_down_pos[1])\
+                    .click_and_hold()\
+                    .move_by_offset(self.mouse_up_pos[0]-self.mouse_down_pos[0], self.mouse_up_pos[1]-self.mouse_down_pos[1])\
+                    .release().perform()
 
 class KeyTestStep(TestStep):
     KEY_ID = '_huxleyKey'
