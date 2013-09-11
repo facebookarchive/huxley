@@ -20,8 +20,10 @@ import sys
 import jsonpickle
 import plac
 from selenium import webdriver
+from selenium.common.exceptions import UnexpectedAlertPresentException
 
 from huxley.run import TestRun
+from huxley.consts import TestRunStartTime
 from huxley.errors import TestError
 
 DRIVERS = {
@@ -54,7 +56,8 @@ CAPABILITIES = {
     diffcolor=plac.Annotation('Diff color for errors (i.e. 0,255,0)', 'option', 'd', str, metavar='RGB'),
     screensize=plac.Annotation('Width and height for screen (i.e. 1024x768)', 'option', 's', metavar='SIZE'),
     autorerecord=plac.Annotation('Playback test and automatically rerecord if it fails', 'flag', 'a'),
-    save_diff=plac.Annotation('Save information about failures as last.png and diff.png', 'flag', 'e')
+    save_diff=plac.Annotation('Save information about failures as last.png and diff.png', 'flag', 'e'),
+    his_mode=plac.Annotation('run in history mode, you will get all screenshot png by each time', 'flag', 'H')
 )
 def main(
         url,
@@ -69,7 +72,10 @@ def main(
         diffcolor='0,255,0',
         screensize='1024x768',
         autorerecord=False,
-        save_diff=False):
+        save_diff=False,
+        his_mode=False):
+
+    print "start time:%s..." % TestRunStartTime().get_start_time().strftime('%Y-%m-%d %H:%M:%S')
 
     if postdata:
         if postdata == '-':
@@ -96,7 +102,7 @@ def main(
     diffcolor = tuple(int(x) for x in diffcolor.split(','))
     jsonfile = os.path.join(filename, 'record.json')
 
-    with contextlib.closing(d):
+    try:
         if record:
             if local:
                 local_d = webdriver.Remote(local, CAPABILITIES[browser])
@@ -106,14 +112,14 @@ def main(
                 with open(jsonfile, 'w') as f:
                     f.write(
                         jsonpickle.encode(
-                            TestRun.record(local_d, d, (url, postdata), screensize, filename, diffcolor, sleepfactor, save_diff)
+                            TestRun.record(local_d, d, (url, postdata), screensize, filename, diffcolor, sleepfactor, save_diff, his_mode)
                         )
                     )
             print 'Test recorded successfully'
             return 0
         elif rerecord:
             with open(jsonfile, 'r') as f:
-                TestRun.rerecord(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor, save_diff)
+                TestRun.rerecord(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor, save_diff, his_mode)
                 print 'Test rerecorded successfully'
                 return 0
         elif autorerecord:
@@ -121,19 +127,26 @@ def main(
                 test = jsonpickle.decode(f.read())
             try:
                 print 'Running test to determine if we need to rerecord'
-                TestRun.playback(test, filename, (url, postdata), d, sleepfactor, diffcolor, save_diff)
+                TestRun.playback(test, filename, (url, postdata), d, sleepfactor, diffcolor, save_diff, his_mode)
                 print 'Test played back successfully'
                 return 0
             except TestError:
                 print 'Test failed, rerecording...'
-                TestRun.rerecord(test, filename, (url, postdata), d, sleepfactor, diffcolor, save_diff)
+                TestRun.rerecord(test, filename, (url, postdata), d, sleepfactor, diffcolor, save_diff, his_mode)
                 print 'Test rerecorded successfully'
                 return 2
         else:
             with open(jsonfile, 'r') as f:
-                TestRun.playback(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor, save_diff)
+                TestRun.playback(jsonpickle.decode(f.read()), filename, (url, postdata), d, sleepfactor, diffcolor, save_diff, his_mode)
                 print 'Test played back successfully'
                 return 0
+    finally:
+        try:
+            d.close()
+        except UnexpectedAlertPresentException:
+            print "auto accept alert"
+            alert = d.switch_to_alert()
+            alert.accept()
 
 if __name__ == '__main__':
     sys.exit(plac.call(main))

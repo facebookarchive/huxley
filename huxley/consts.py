@@ -12,7 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
+
 class TestRunModes(object):
-    RECORD = 1
-    RERECORD = 2
-    PLAYBACK = 3
+    RECORD = 0x01
+    RERECORD = 0x02
+    PLAYBACK = 0x04
+    HISRECORD = 0x08
+
+class TestRunStartTime(object):
+    _instance = None
+    _start_time = None
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(TestRunStartTime, cls).__new__(
+                                cls, *args, **kwargs)
+            cls._start_time = datetime.now()
+        return cls._instance
+
+    @classmethod
+    def get_start_time(cls):
+        return cls._start_time
+

@@ -16,10 +16,11 @@ import json
 import operator
 import os
 import time
+from selenium.common.exceptions import UnexpectedAlertPresentException
 
-from huxley.consts import TestRunModes
+from huxley.consts import TestRunModes, TestRunStartTime
 from huxley.errors import TestError
-from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep
+from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep, DragAndDropTestStep
 
 def get_post_js(url, postdata):
     markup = '<form method="post" action="%s">' % url
@@ -42,12 +43,22 @@ def get_post_js(url, postdata):
 
 def navigate(d, url):
     href, postdata = url
-    d.get('about:blank')
-    d.refresh()
-    if not postdata:
-        d.get(href)
-    else:
-        d.execute_script(get_post_js(href, postdata))
+    try:
+        d.get('about:blank')
+        d.refresh()
+    except UnexpectedAlertPresentException:
+        print "auto accept alert"
+        alert = d.switch_to_alert()
+        alert.accept()
+
+    try:
+        from huxley.login import login_handle
+        login_handle(d, href)
+    except ImportError, e:
+        if not postdata:
+            d.get(href)
+        else:
+            d.execute_script(get_post_js(href, postdata))
 
 
 class Test(object):
@@ -57,7 +68,7 @@ class Test(object):
 
 
 class TestRun(object):
-    def __init__(self, test, path, url, d, mode, diffcolor, save_diff):
+    def __init__(self, test, path, url, d, mode, diffcolor, save_diff, his_mode):
         if not isinstance(test, Test):
             raise ValueError('You must provide a Test instance')
         self.test = test
@@ -67,43 +78,57 @@ class TestRun(object):
         self.mode = mode
         self.diffcolor = diffcolor
         self.save_diff = save_diff
+        self.his_mode = his_mode
 
     @classmethod
-    def rerecord(cls, test, path, url, d, sleepfactor, diffcolor, save_diff):
+    def rerecord(cls, test, path, url, d, sleepfactor, diffcolor, save_diff, his_mode=False):
         print 'Begin rerecord'
-        run = TestRun(test, path, url, d, TestRunModes.RERECORD, diffcolor, save_diff)
+        run_mode = TestRunModes.RERECORD
+        if his_mode:
+            run_mode |= TestRunModes.HISRECORD
+        run = TestRun(test, path, url, d, run_mode, diffcolor, save_diff, his_mode)
         run._playback(sleepfactor)
         print
         print 'Playing back to ensure the test is correct'
         print
-        cls.playback(test, path, url, d, sleepfactor, diffcolor, save_diff)
+        cls.playback(test, path, url, d, sleepfactor, diffcolor, save_diff, his_mode)
 
     @classmethod
-    def playback(cls, test, path, url, d, sleepfactor, diffcolor, save_diff):
+    def playback(cls, test, path, url, d, sleepfactor, diffcolor, save_diff, his_mode=False):
         print 'Begin playback'
-        run = TestRun(test, path, url, d, TestRunModes.PLAYBACK, diffcolor, save_diff)
+        run_mode = TestRunModes.PLAYBACK
+        if his_mode:
+            run_mode |= TestRunModes.HISRECORD
+        run = TestRun(test, path, url, d, run_mode, diffcolor, save_diff, his_mode)
         run._playback(sleepfactor)
 
     def _playback(self, sleepfactor):
         self.d.set_window_size(*self.test.screen_size)
         navigate(self.d, self.url)
         last_offset_time = 0
+        play_errors = []
         for step in self.test.steps:
-            sleep_time = (step.offset_time - last_offset_time) * sleepfactor
-            print '  Sleeping for', sleep_time, 'ms'
-            time.sleep(float(sleep_time) / 1000)
-            step.execute(self)
-            last_offset_time = step.offset_time
+            try:
+                sleep_time = (step.offset_time - last_offset_time) * sleepfactor
+                print '  Sleeping for', sleep_time, 'ms'
+                time.sleep(float(sleep_time) / 1000)
+                step.execute(self)
+                last_offset_time = step.offset_time
+            except TestError,e:
+                play_errors.append({'error':e, 'step':step.index, 'timestamp':TestRunStartTime().get_start_time()})
+                continue
+        if play_errors:
+            raise TestError("%d errs" % len(play_errors), play_errors)
+
 
     @classmethod
-    def record(cls, d, remote_d, url, screen_size, path, diffcolor, sleepfactor, save_diff):
+    def record(cls, d, remote_d, url, screen_size, path, diffcolor, sleepfactor, save_diff, his_mode=False):
         print 'Begin record'
-        try:
+        if not os.path.exists(path):
             os.makedirs(path)
-        except:
-            pass
+
         test = Test(screen_size)
-        run = TestRun(test, path, url, d, TestRunModes.RECORD, diffcolor, save_diff)
+        run = TestRun(test, path, url, d, TestRunModes.RECORD, diffcolor, save_diff, his_mode)
         d.set_window_size(*screen_size)
         navigate(d, url)
         start_time = d.execute_script('return Date.now();')
@@ -111,16 +136,26 @@ class TestRun(object):
 (function() {
 var events = [];
 window.addEventListener('click', function (e) { events.push([Date.now(), 'click', [e.clientX, e.clientY]]); }, true);
+window.addEventListener('mousedown', function (e) { events.push([Date.now(), 'mousedown', [e.clientX, e.clientY]]); }, true);
+window.addEventListener('mouseup', function (e) { events.push([Date.now(), 'mouseup', [e.clientX, e.clientY]]); }, true);
+window.addEventListener('mousemove', function (e) { events.push([Date.now(), 'mousemove', [e.clientX, e.clientY]]); }, true);
 window.addEventListener('keyup', function (e) { events.push([Date.now(), 'keyup', String.fromCharCode(e.keyCode)]); }, true);
 window._getHuxleyEvents = function() { return events; };
 })();
 ''')
         steps = []
+        mouse_action_stack = []
+        drag_and_drop_sub_steps = []
         while True:
             if len(raw_input("Press enter to take a screenshot, or type Q+enter if you're done\n")) > 0:
                 break
             screenshot_step = ScreenshotTestStep(d.execute_script('return Date.now();') - start_time, run, len(steps))
-            run.d.save_screenshot(screenshot_step.get_path(run))
+            if his_mode:
+                screenshot_step.create_run_path(run)
+                run.d.save_screenshot(screenshot_step.get_latest_path(run))
+            else:
+                run.d.save_screenshot(screenshot_step.get_path(run))
+
             steps.append(screenshot_step)
             print len(steps), 'screenshots taken'
 
@@ -138,6 +173,24 @@ window._getHuxleyEvents = function() { return events; };
             elif type == 'keyup':
                 steps.append(KeyTestStep(timestamp - start_time, params))
 
+            elif type == 'mousedown':
+                del mouse_action_stack[:]
+                mouse_action_stack.append({'action':'mousedown', 'offtime':(timestamp -start_time), 'position':params})
+            elif type == 'mousemove':
+                mouse_actions = [item['action'] for item in mouse_action_stack]
+                if 'mousedown' in mouse_actions:
+                    mouse_action_stack.append({'action':'mousemove', 'offtime':(timestamp -start_time), 'position':params})
+            elif type == 'mouseup':
+                mouse_actions = [item['action'] for item in mouse_action_stack]
+                if 'mousedown' in mouse_actions:
+                    mouse_down_index = mouse_actions.index('mousedown')
+                    if mouse_down_index<len(mouse_action_stack) - 1:
+                        steps.append(DragAndDropTestStep(mouse_action_stack[mouse_down_index]['offtime'],
+                                                     mouse_action_stack[mouse_down_index]['position'],
+                                                     params))
+
+                del mouse_action_stack[:]
+
         steps.sort(key=operator.attrgetter('offset_time'))
 
         test.steps = steps
@@ -149,7 +202,7 @@ window._getHuxleyEvents = function() { return events; };
             'Press enter to start.'
         )
         print
-        cls.rerecord(test, path, url, remote_d, sleepfactor, diffcolor, save_diff)
+        cls.rerecord(test, path, url, remote_d, sleepfactor, diffcolor, save_diff, his_mode)
 
         return test
 

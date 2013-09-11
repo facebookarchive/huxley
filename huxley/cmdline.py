@@ -22,6 +22,7 @@ import plac
 
 from huxley.main import main as huxleymain
 from huxley.version import __version__
+from huxley.gentestcase import GenTestCase
 
 class ExitCodes(object):
     OK = 0
@@ -43,6 +44,13 @@ DEFAULTS = json.loads(os.environ.get('HUXLEY_DEFAULTS', 'null'))
         str,
         metavar='GLOB'
     ),
+    testcasename=plac.Annotation(
+        'create testcase',
+        'option',
+        'c',
+        str,
+        metavar='GLOB'
+    ),
     record=plac.Annotation(
         'Record a new test',
         'flag',
@@ -58,6 +66,11 @@ DEFAULTS = json.loads(os.environ.get('HUXLEY_DEFAULTS', 'null'))
         'flag',
         'e'
     ),
+    his_mode=plac.Annotation(
+        'run in history mode, you will get all screenshot png by each time',
+        'flag',
+        'H'
+    ),
     version=plac.Annotation(
         'Get the current version',
         'flag',
@@ -70,11 +83,18 @@ def _main(
     record=False,
     playback_only=False,
     save_diff=False,
-    version=False
+    his_mode=False,
+    version=False,
+    testcasename=None
 ):
     if version:
         print 'Huxley ' + __version__
         return ExitCodes.OK
+
+    if testcasename:
+        print 'create testcase %s' % testcasename
+        GenTestCase(testcasename).gen()
+        return
 
     testfiles = glob.glob(testfile)
     if len(testfiles) == 0:
@@ -127,6 +147,7 @@ def _main(
                     local=LOCAL_WEBDRIVER_URL,
                     remote=REMOTE_WEBDRIVER_URL,
                     record=True,
+                    his_mode=his_mode,
                     screensize=screensize
                 )
             else:
@@ -138,6 +159,7 @@ def _main(
                     sleepfactor=sleepfactor,
                     autorerecord=not playback_only,
                     save_diff=save_diff,
+                    his_mode=his_mode,
                     screensize=screensize
                 )
             new_screenshots = new_screenshots or (r != 0)
