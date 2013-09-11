@@ -169,7 +169,8 @@ class HuxleyTestCase(object):
                            ------------------------------------------------------------------------------------------------
 
                          """  % (config.url, ierror['error'], ierror['step'],
-                                    urlparse.urljoin(self.test_confirm_url, os.path.join(str(ierror[0]), timestamp, timestamp)))
+                                    urlparse.urljoin(self.test_confirm_url,
+                                        os.path.join(os.path.relpath(i_dir, os.getcwd()), timestamp, timestamp)))
                 print '\n'.join([line.strip() for line in errmsg.splitlines()])
                 test_error_list.append(ierror)
 
