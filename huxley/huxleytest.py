@@ -137,7 +137,7 @@ class HuxleyTestCase(object):
             raise ValueError('only support one conf file, current dir:%s has %d files'
                     % (i_dir, len(huxley_configs)))
         if len(huxley_configs) < 1:
-            raise ValueError('None conf file' % (i_dir, len(huxley_configs)))
+            raise ValueError('None conf file, current dir:%s has %d files' % (i_dir, len(huxley_configs)))
         config = HuxleyConfig(os.path.join(os.path.realpath(i_dir), os.path.basename(huxley_configs[0])))
 
         try:
@@ -169,8 +169,8 @@ class HuxleyTestCase(object):
                            ------------------------------------------------------------------------------------------------
 
                          """  % (config.url, ierror['error'], ierror['step'],
-                                    urlparse.urljoin(self.test_confirm_url, os.path.join(str(item[0]), timestamp, timestamp)))
+                                    urlparse.urljoin(self.test_confirm_url, os.path.join(str(ierror[0]), timestamp, timestamp)))
                 print '\n'.join([line.strip() for line in errmsg.splitlines()])
                 test_error_list.append(ierror)
 
-        self.assertEqual(len(test_error_list), 0, 'New screenshots were taken and written. Please be sure to review and check in.')
+        assert(len(test_error_list)==0), 'New screenshots were taken and written. Please be sure to review and check in.'
