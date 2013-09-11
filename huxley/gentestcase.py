@@ -27,7 +27,7 @@ class GenTestCase(object):
             class %sTestCase(TestCase, HuxleyTestCase):
                 pass
 
-            """ % self._project_name
+            """ % self._project_name.capitalize()
         self._conf_content = """
             [%s]
             url=http://github.com/facebook/huxley
