@@ -45,6 +45,18 @@ class ClickTestStep(TestStep):
             'document.elementFromPoint(%d, %d).click();' % (self.pos[0], self.pos[1])
         )
 
+class MouseDownTestStep(TestStep):
+    def __init__(self, offset_time, pos):
+        super(MouseDownTestStep, self).__init__(offset_time)
+        self.pos = pos
+
+    def execute(self, run):
+        print '  mousedown', self.pos
+        mouse_down = ActionChains(run.d)
+        mouse_down.move_to_element_with_offset(run.d.find_element_by_xpath('//body'), 0, 0)\
+                    .move_by_offset(self.pos[0], self.pos[1])\
+                    .click_and_hold().release().perform()
+
 class DragAndDropTestStep(TestStep):
     CLICK_ID = '_huxleyDragAndDrop'
 

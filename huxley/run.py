@@ -20,7 +20,7 @@ from selenium.common.exceptions import UnexpectedAlertPresentException
 
 from huxley.consts import TestRunModes, TestRunStartTime
 from huxley.errors import TestError
-from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep, DragAndDropTestStep
+from huxley.steps import ScreenshotTestStep, ClickTestStep, KeyTestStep, DragAndDropTestStep, MouseDownTestStep
 
 def get_post_js(url, postdata):
     markup = '<form method="post" action="%s">' % url
@@ -174,6 +174,7 @@ window._getHuxleyEvents = function() { return events; };
                 steps.append(KeyTestStep(timestamp - start_time, params))
 
             elif type == 'mousedown':
+                steps.append(MouseDownTestStep(timestamp - start_time, params))
                 del mouse_action_stack[:]
                 mouse_action_stack.append({'action':'mousedown', 'offtime':(timestamp -start_time), 'position':params})
             elif type == 'mousemove':
@@ -184,7 +185,8 @@ window._getHuxleyEvents = function() { return events; };
                 mouse_actions = [item['action'] for item in mouse_action_stack]
                 if 'mousedown' in mouse_actions:
                     mouse_down_index = mouse_actions.index('mousedown')
-                    if mouse_down_index<len(mouse_action_stack) - 1:
+                    if (mouse_down_index<len(mouse_action_stack) - 1) and \
+                            (mouse_action_stack[mouse_down_index]['position']<>params):
                         steps.append(DragAndDropTestStep(mouse_action_stack[mouse_down_index]['offtime'],
                                                      mouse_action_stack[mouse_down_index]['position'],
                                                      params))
