@@ -106,12 +106,12 @@ class TestRun(object):
         run = TestRun(test, path, url, d, TestRunModes.RECORD, diffcolor, save_diff)
         d.set_window_size(*screen_size)
         navigate(d, url)
-        start_time = d.execute_script('return Date.now();')
+        start_time = d.execute_script('return +new Date();')
         d.execute_script('''
 (function() {
 var events = [];
-window.addEventListener('click', function (e) { events.push([Date.now(), 'click', [e.clientX, e.clientY]]); }, true);
-window.addEventListener('keyup', function (e) { events.push([Date.now(), 'keyup', String.fromCharCode(e.keyCode)]); }, true);
+window.addEventListener('click', function (e) { events.push([+new Date(), 'click', [e.clientX, e.clientY]]); }, true);
+window.addEventListener('keyup', function (e) { events.push([+new Date(), 'keyup', String.fromCharCode(e.keyCode)]); }, true);
 window._getHuxleyEvents = function() { return events; };
 })();
 ''')
