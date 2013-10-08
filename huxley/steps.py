@@ -39,6 +39,9 @@ class ClickTestStep(TestStep):
         run.d.execute_script(
             'document.elementFromPoint(%d, %d).click();' % (self.pos[0], self.pos[1])
         )
+        run.d.execute_script(
+            'document.elementFromPoint(%d, %d).focus();' % (self.pos[0], self.pos[1])
+        )
 
 
 class KeyTestStep(TestStep):
