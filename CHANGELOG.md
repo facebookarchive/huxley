@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4
+
+* Fix handling of dependencies
+
 ## 0.3
 
 * Expose `--save-diff` command-line option instead of requiring an external image diff tool
