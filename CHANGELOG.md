@@ -3,6 +3,7 @@
 ## 0.4
 
 * Fix handling of dependencies
+* Fix new versions of Firefox by upgrading Selenium
 
 ## 0.3
 
