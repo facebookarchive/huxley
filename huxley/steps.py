@@ -124,12 +124,12 @@ class ScreenshotTestStep(TestStep):
             run_time = TestRunStartTime.get_start_time()
         history_run_folders_time = [
                 datetime.strptime(item, '%Y%m%d%H%M%S') for item in os.listdir(run.path) if re.match('\d+', item)]
-        history_run_folders_time = [item for item in history_run_folders_time if item]
+        history_run_folders_time = [item for item in history_run_folders_time if item<>run_time]
 
         if not history_run_folders_time:
             return None
         latest_dir_time = history_run_folders_time[
-            history_run_folders_time.index(min(history_run_folders_time, key=lambda x:(run_time-x).seconds))]
+            history_run_folders_time.index(min(history_run_folders_time, key=lambda x:(run_time-x).total_seconds()))]
 
         return os.path.join(run.path, latest_dir_time.strftime('%Y%m%d%H%M%S'), 'screenshot' + str(self.index) + '.png')
 
