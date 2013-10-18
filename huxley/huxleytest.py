@@ -111,9 +111,9 @@ class HuxleyTestCase(object):
     """
     recording = False
     playback_only = False
-    local_webdriver_url = os.environ.get('HUXLEY_WEBDRIVER_LOCAL', 'http://192.168.159.130:4444/wd/hub')
-    remote_webdriver_url = os.environ.get('HUXLEY_WEBDRIVER_REMOTE', 'http://192.168.159.130:4444/wd/hub')
-    test_confirm_url = os.environ.get('HUXLEYVIEW_URL', 'http://192.168.159.131:9999/huxley/')
+    local_webdriver_url = os.environ.get('HUXLEY_WEBDRIVER_LOCAL', 'http://172.16.11.74:8888/wd/hub')
+    remote_webdriver_url = os.environ.get('HUXLEY_WEBDRIVER_REMOTE', 'http://172.16.11.74:8888/wd/hub')
+    test_confirm_url = os.environ.get('HUXLEYVIEW_URL', 'http://172.16.11.34:9999/huxley/')
 
     def test_huxley_base(self):
         test_error_list = []
@@ -157,10 +157,10 @@ class HuxleyTestCase(object):
                 errmsg = """
                            ------------------------------------------------------------------------------------------------
                              _____ ____  ____   ___  ____
-                            | ____|  _ \|  _ \ / _ \|  _ \
+                            | ____|  _ \|  _ \ / _ \|  _
                             |  _| | |_) | |_) | | | | |_) |
                             | |___|  _ <|  _ <| |_| |  _ <
-                            |_____|_| \_\_| \_\\___/|_| \_\
+                            |_____|_| \_\_| \_ ___/|_| \_
 
                             Test_URL:%s
                             Errmsg:%s
@@ -169,8 +169,12 @@ class HuxleyTestCase(object):
                            ------------------------------------------------------------------------------------------------
 
                          """  % (config.url, ierror['error'], ierror['step'],
-                                    urlparse.urljoin(self.test_confirm_url,
-                                        os.path.join(os.path.relpath(i_dir, os.getcwd()), timestamp, timestamp)))
+                                 urlparse.urljoin(self.test_confirm_url,
+                                                  os.path.join(os.path.relpath(i_dir, os.getcwd()),
+                                                               os.path.basename(i_dir).lstrip('test_') +'.huxley',
+                                                               timestamp, timestamp)
+                                                  )
+                                )
                 print '\n'.join([line.strip() for line in errmsg.splitlines()])
                 test_error_list.append(ierror)
 
