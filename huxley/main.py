@@ -57,6 +57,7 @@ CAPABILITIES = {
     save_diff=plac.Annotation('Save information about failures as last.png and diff.png', 'flag', 'e')
 )
 def main(
+        testname,
         url,
         filename,
         postdata=None,
@@ -85,7 +86,7 @@ def main(
         screensize = tuple(int(x) for x in screensize.split('x'))
     except KeyError:
         raise ValueError(
-            'Invalid browser %r; valid browsers are %r.' % (browser, DRIVERS.keys())
+            '[%s] Invalid browser %r; valid browsers are %r.' % (testname, browser, DRIVERS.keys())
         )
 
     try:
