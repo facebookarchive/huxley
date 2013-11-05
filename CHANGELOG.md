@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5
+
+* Support concurrent runs (`-c <num>`)
+
 ## 0.4
 
 * Fix handling of dependencies
