@@ -105,6 +105,13 @@ def run_test(record, playback_only, save_diff, new_screenshots, file, config, te
         'flag',
         'p'
     ),
+    concurrency=plac.Annotation(
+        'Number of tests to run in parallel',
+        'option',
+        'c',
+        int,
+        metavar='NUMBER'
+    ),
     save_diff=plac.Annotation(
         'Save information about failures as last.png and diff.png',
         'flag',
@@ -121,6 +128,7 @@ def _main(
     testfile='Huxleyfile',
     record=False,
     playback_only=False,
+    concurrency=1,
     save_diff=False,
     version=False
 ):
@@ -152,7 +160,7 @@ def _main(
                 continue
             pool.enqueue(run_test, record, playback_only, save_diff, new_screenshots, file, config, testname)
 
-    pool.work(5)
+    pool.work(concurrency)
     if new_screenshots.value:
         print '** New screenshots were written; please verify that they are correct. **'
         return ExitCodes.NEW_SCREENSHOTS
