@@ -13,10 +13,16 @@
 # limitations under the License.
 
 import os
+import threading
 
 from huxley.consts import TestRunModes
 from huxley.errors import TestError
 from huxley.images import images_identical, image_diff
+
+# Since we want consistent focus screenshots we steal focus
+# when taking screenshots. To avoid races we lock during this
+# process.
+SCREENSHOT_LOCK = threading.RLock()
 
 class TestStep(object):
     def __init__(self, offset_time):
@@ -74,23 +80,27 @@ class ScreenshotTestStep(TestStep):
         print '  Taking screenshot', self.index
         original = self.get_path(run)
         new = os.path.join(run.path, 'last.png')
-        if run.mode == TestRunModes.RERECORD:
-            run.d.save_screenshot(original)
-        else:
-            run.d.save_screenshot(new)
-            try:
-                if not images_identical(original, new):
-                    if run.save_diff:
-                        diffpath = os.path.join(run.path, 'diff.png')
-                        diff = image_diff(original, new, diffpath, run.diffcolor)
-                        raise TestError(
-                            ('Screenshot %s was different; compare %s with %s. See %s ' +
-                             'for the comparison. diff=%r') % (
-                                self.index, original, new, diffpath, diff
+
+        with SCREENSHOT_LOCK:
+            # Steal focus for a consistent screenshot
+            run.d.switch_to_window(run.d.window_handles[0])
+            if run.mode == TestRunModes.RERECORD:
+                run.d.save_screenshot(original)
+            else:
+                run.d.save_screenshot(new)
+                try:
+                    if not images_identical(original, new):
+                        if run.save_diff:
+                            diffpath = os.path.join(run.path, 'diff.png')
+                            diff = image_diff(original, new, diffpath, run.diffcolor)
+                            raise TestError(
+                                ('Screenshot %s was different; compare %s with %s. See %s ' +
+                                 'for the comparison. diff=%r') % (
+                                    self.index, original, new, diffpath, diff
+                                )
                             )
-                        )
-                    else:
-                        raise TestError('Screenshot %s was different.' % self.index)
-            finally:
-                if not run.save_diff:
-                    os.unlink(new)
+                        else:
+                            raise TestError('Screenshot %s was different.' % self.index)
+                finally:
+                    if not run.save_diff:
+                        os.unlink(new)
