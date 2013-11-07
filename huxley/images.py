@@ -14,8 +14,8 @@
 
 import math
 
-import Image
-import ImageChops
+from PIL import Image
+from PIL import ImageChops
 
 from huxley.errors import TestError
 
