@@ -3,6 +3,7 @@
 ## 0.5
 
 * Support concurrent runs (`-c <num>`)
+* Use Pillow instead of PIL
 
 ## 0.4
 
