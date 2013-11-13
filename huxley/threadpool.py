@@ -1,5 +1,6 @@
 import Queue
 import threading
+import time
 
 class ThreadPool(object):
     def __init__(self):
@@ -12,10 +13,18 @@ class ThreadPool(object):
         threads = []
         for _ in xrange(concurrency):
             t = threading.Thread(target=self.thread)
+            t.daemon = True
             t.start()
             threads.append(t)
-        for t in threads:
-            t.join()
+
+        while True:
+            # join() but allow CTRL-C
+            active = False
+            for t in threads:
+                active = active or t.is_alive()
+            if not active:
+                break
+            time.sleep(0.2)
 
     def thread(self):
         while not self.queue.empty():
