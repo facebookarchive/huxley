@@ -4,6 +4,7 @@
 #Date:      2013-08-29
 
 import os
+import re
 import sys
 import glob
 import json
@@ -171,7 +172,8 @@ class HuxleyTestCase(object):
                          """  % (config.url, ierror['error'], ierror['step'],
                                  urlparse.urljoin(self.test_confirm_url,
                                                   os.path.join(os.path.relpath(i_dir, os.getcwd()),
-                                                               os.path.basename(i_dir).lstrip('test_') +'.huxley',
+                                                               re.match('^test_(.*)',
+                                                                   os.path.basename(i_dir)).groups()[0] +'.huxley',
                                                                timestamp, timestamp)
                                                   )
                                 )
