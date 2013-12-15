@@ -110,7 +110,7 @@ class TestRun(object):
         d.execute_script('''
 (function() {
 var events = [];
-window.addEventListener('click', function (e) { events.push([+new Date(), 'click', [e.clientX, e.clientY]]); }, true);
+window.addEventListener('mouseup', function (e) { events.push([+new Date(), 'click', [e.clientX, e.clientY]]); }, true);
 window.addEventListener('keyup', function (e) { events.push([+new Date(), 'keyup', String.fromCharCode(e.keyCode)]); }, true);
 window._getHuxleyEvents = function() { return events; };
 })();
