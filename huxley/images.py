@@ -41,13 +41,8 @@ def image_diff(path1, path2, outpath, diffcolor):
 
     rmsdiff = rmsdiff_2011(im1, im2)
 
-    pix1 = im1.load()
-    pix2 = im2.load()
-
     if im1.mode != im2.mode:
         raise TestError('Different pixel modes between %r and %r' % (path1, path2))
-    if im1.size != im2.size:
-        raise TestError('Different dimensions between %r (%r) and %r (%r)' % (path1, im1.size, path2, im2.size))
 
     mode = im1.mode
 
@@ -63,6 +58,19 @@ def image_diff(path1, path2, outpath, diffcolor):
         raise NotImplementedError('TODO: look up nearest palette color')
     else:
         raise NotImplementedError('Unexpected PNG mode')
+
+    if im1.size != im2.size:
+        if im1.size > im2.size:
+            im3 = Image.new(im1.mode, im1.size, value)
+            im3.paste(im2, (0, 0), im2)
+            im2 = im3
+        else:
+            im3 = Image.new(im2.mode, im2.size, value)
+            im3.paste(im1, (0, 0), im1)
+            im1 = im3
+
+    pix1 = im1.load()
+    pix2 = im2.load()
 
     width, height = im1.size
 
