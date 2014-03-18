@@ -143,7 +143,8 @@ def _main(
 
     new_screenshots = threadpool.Flag()
     pool = threadpool.ThreadPool()
-    names = names.split(",")
+    if names:
+        names = names.split(",")
 
     for file in testfiles:
         msg = 'Running Huxley file: ' + file
