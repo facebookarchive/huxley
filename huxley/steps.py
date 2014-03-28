@@ -101,6 +101,10 @@ class ScreenshotTestStep(TestStep):
                             )
                         else:
                             raise TestError('Screenshot %s was different.' % self.index)
+                except (TestError, ValueError) as e:
+                    print ' ', e
+                    pass
                 finally:
                     if not run.save_diff:
                         os.unlink(new)
+
