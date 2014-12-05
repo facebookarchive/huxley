@@ -4,6 +4,10 @@
 
 Huxley is a test-like system for catching **visual regressions** in Web applications. It was built by [Pete Hunt](http://github.com/petehunt/) with input from [Maykel Loomans](http://www.miekd.com/) at [Instagram](http://www.instagram.com/).
 
+## Archived Repo
+
+**This is an archived project and is no longer supported or updated by Facebook or Instagram. Please do not file issues or pull-requests against this repo. If you wish to continue to develop this code yourself, we recommend you fork it.**
+
 ## What is the problem?
 
 * UI tests are hard to write and are usually fragile.
