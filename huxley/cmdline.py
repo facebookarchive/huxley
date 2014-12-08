@@ -16,6 +16,7 @@ import ConfigParser
 import glob
 import json
 import os
+import fnmatch
 import sys
 import threading
 
@@ -117,6 +118,13 @@ def run_test(record, playback_only, save_diff, new_screenshots, file, config, te
         'flag',
         'e'
     ),
+    filedir=plac.Annotation(
+         'Specify a directory for test files to use',
+         'option',
+         'd',
+         str,
+         metavar="DIR"
+    ),
     version=plac.Annotation(
         'Get the current version',
         'flag',
@@ -130,13 +138,21 @@ def _main(
     playback_only=False,
     concurrency=1,
     save_diff=False,
-    version=False
+    version=False,
+    filedir=None
 ):
     if version:
         print 'Huxley ' + __version__
         return ExitCodes.OK
 
-    testfiles = glob.glob(testfile)
+    matches = []
+    if filedir is not None:
+      for root, dirnames, filenames in os.walk(filedir):
+        for filename in fnmatch.filter(filenames, testfile):
+            matches.append(os.path.join(root, filename))
+      testfiles= matches
+    else:
+      testfiles = glob.glob(testfile)
     if len(testfiles) == 0:
         print 'no Huxleyfile found'
         return ExitCodes.ERROR
