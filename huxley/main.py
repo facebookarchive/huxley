@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
+from contextlib import contextmanager
 import os
 import json
 import sys
@@ -39,6 +39,14 @@ CAPABILITIES = {
 }
 
 
+@contextmanager
+def quitting(driver):
+    try:
+        yield driver
+    finally:
+        driver.quit()
+
+
 @plac.annotations(
     url=plac.Annotation('URL to hit'),
     filename=plac.Annotation('Test file location'),
@@ -56,6 +64,8 @@ CAPABILITIES = {
     autorerecord=plac.Annotation('Playback test and automatically rerecord if it fails', 'flag', 'a'),
     save_diff=plac.Annotation('Save information about failures as last.png and diff.png', 'flag', 'e')
 )
+
+
 def main(
         testname,
         url,
@@ -97,13 +107,13 @@ def main(
     diffcolor = tuple(int(x) for x in diffcolor.split(','))
     jsonfile = os.path.join(filename, 'record.json')
 
-    with contextlib.closing(d):
+    with quitting(d):
         if record:
             if local:
                 local_d = webdriver.Remote(local, CAPABILITIES[browser])
             else:
                 local_d = d
-            with contextlib.closing(local_d):
+            with quitting(local_d):
                 with open(jsonfile, 'w') as f:
                     f.write(
                         jsonpickle.encode(
