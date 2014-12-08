@@ -59,7 +59,7 @@ url=http://localhost:8000/toggle.html
 
 This creates a test named `toggle` that tests the URL `http://localhost:8000/toggle.html`.
 
-### Step 2: record the test
+### Step 3: record the test
 
 Huxley makes writing tests easy because it simply records your browser session -- specifically mouse clicks and key presses on a single page -- and can replay them in an automated way. To do this you need to install [Selenium Server](http://docs.seleniumhq.org/download/) and start it. It's as easy as `java -jar selenium-server-standalone-XXX.jar`.
 
@@ -67,17 +67,17 @@ Then, run Huxley in record mode: `huxley --record`. Huxley will bring up a brows
 
 After confirming, Huxley will automatically record the test for you and save it to disk as `toggle.huxley`. Be sure to commit the `Huxleyfile` as well as `toggle.huxley` into your repository so you can track changes to them.
 
-### Step 3: playback
+### Step 4: playback
 
 Simply run the `huxley` command in the same directory as the `Huxleyfile` to be sure that your app still works.
 
-### Step 4: update the test with new screen shots
+### Step 5: update the test with new screen shots
 
 You'll likely update the UI of the component a lot without changing its core functionality. Huxley can take new screen shots for you when this happens. Tweak the UI of the component in `toggle.html` somehow (maybe change the button color or something) and re-run `huxley`. It will warn you that the UI has changed and will automatically write new screen shots for you. If you run `huxley` again, the test will pass since the screen shots were updated.
 
 The best part is, since the screen shots are checked into the repository, you can review the changes to the UI as part of the code review process if you'd like. At Instagram we have frontend engineers reviewing the JavaScript and designers reviewing the screenshots to ensure that they're pixel perfect.
 
-### Step 5: run in CI mode
+### Step 6: run in CI mode
 
 If you're using a continuous integration solution like [Jenkins](http://jenkins-ci.org/) you probably don't want to automatically rerecord screen shots on failure. Simply run `huxley --playback-only` to do this.
 
