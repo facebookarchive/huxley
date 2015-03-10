@@ -8,6 +8,8 @@ Huxley is a test-like system for catching **visual regressions** in Web applicat
 
 **This is an archived project and is no longer supported or updated by Facebook or Instagram. Please do not file issues or pull-requests against this repo. If you wish to continue to develop this code yourself, we recommend you fork it.**
 
+For a port of Huxley that maintains its spirit, check out [Node-huxley](https://github.com/chenglou/node-huxley).
+
 ## What is the problem?
 
 * UI tests are hard to write and are usually fragile.
