@@ -1,6 +1,11 @@
 *~
-Huxley.egg-info
+*.egg-info
+*.egg
+*.sublime-workspace
+.*.swp
 *.pyc
+venv
+.venv
 build/
 dist/
 .DS_Store
