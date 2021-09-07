@@ -12,7 +12,7 @@ setup(
     install_requires = [
         'selenium==2.35.0',
         'plac==0.9.1',
-        'Pillow==2.2.1',
+        'Pillow==8.3.2',
         'jsonpickle==0.4.0'
     ],
     package_data={'': ['requirements.txt']},
